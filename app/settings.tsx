@@ -77,7 +77,7 @@ export default function SettingsTab() {
         {/* App Info */}
         <SectionHeader title="About" />
         <View style={styles.card}>
-          <SettingsRow icon="camera" label="App Name" value="GPS Camera" />
+          <SettingsRow icon="camera" label="App Name" value="Verified GPS Camera" />
           <View style={styles.divider} />
           <SettingsRow icon="code-slash-outline" label="Version" value={APP_VERSION} />
         </View>
