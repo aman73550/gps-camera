@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   noteBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(15, 15, 15, 0.88)",
+    backgroundColor: "rgba(15, 15, 15, 0.68)",
     paddingHorizontal: 12,
     paddingVertical: 5,
     gap: 7,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   overlayBox: {
     flexDirection: "row",
-    backgroundColor: "rgba(15, 15, 15, 0.92)",
+    backgroundColor: "rgba(15, 15, 15, 0.68)",
     paddingHorizontal: 11,
     paddingVertical: 2.5,
     alignItems: "center",
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   qrWrapper: {
     padding: 4,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "rgba(15, 15, 15, 0.75)",
     borderRadius: 5,
   },
   serialText: {
