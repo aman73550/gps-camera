@@ -30,7 +30,7 @@ export function PhotoOverlay({
           <Text style={styles.timestampText}>{timestamp}</Text>
         </View>
         <View style={styles.qrSection}>
-          <QRCodeView value={serialNumber} size={56} />
+          <QRCodeView value={serialNumber || "GPS-CAMERA"} size={56} />
           <Text style={styles.serialText}>{serialNumber}</Text>
         </View>
       </View>
@@ -42,7 +42,6 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
-    pointerEvents: "none" as any,
   },
   bottomRow: {
     flexDirection: "row",

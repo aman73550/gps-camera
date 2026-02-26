@@ -7,7 +7,6 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  Dimensions,
   Linking,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -15,7 +14,6 @@ import * as Location from "expo-location";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
-import ViewShot, { captureRef } from "react-native-view-shot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -31,8 +29,6 @@ import {
   PhotoRecord,
 } from "@/lib/photo-storage";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
 function openSettings() {
   if (Platform.OS !== "web") {
     try {
@@ -47,7 +43,6 @@ export default function CameraTab() {
   const [locationPermission, requestLocationPermission] =
     Location.useForegroundPermissions();
   const cameraRef = useRef<CameraView>(null);
-  const overlayRef = useRef<View>(null);
 
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
@@ -55,7 +50,6 @@ export default function CameraTab() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
-  const [pendingSerial, setPendingSerial] = useState("");
 
   const { addPhoto, photos, uploadCount, maxGuestUploads } = usePhotos();
 
@@ -67,19 +61,17 @@ export default function CameraTab() {
 
   useEffect(() => {
     if (Platform.OS === "web") {
-      if (navigator.geolocation) {
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
         const watchId = navigator.geolocation.watchPosition(
           (pos) => {
             setLatitude(pos.coords.latitude);
             setLongitude(pos.coords.longitude);
-            setAddress("Web location (reverse geocoding unavailable)");
+            setAddress("Web location");
           },
-          () => setAddress("Location unavailable on web"),
+          () => setAddress("Location unavailable"),
           { enableHighAccuracy: true },
         );
         return () => navigator.geolocation.clearWatch(watchId);
-      } else {
-        setAddress("Geolocation not supported");
       }
       return;
     }
@@ -133,7 +125,7 @@ export default function CameraTab() {
     if (uploadCount >= maxGuestUploads) {
       Alert.alert(
         "Upload Limit Reached",
-        `You have reached the maximum of ${maxGuestUploads} photos as a guest. Please sign in for unlimited uploads.`,
+        `You have reached the maximum of ${maxGuestUploads} photos as a guest.`,
       );
       return;
     }
@@ -143,11 +135,6 @@ export default function CameraTab() {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await ensurePhotosDirectory();
-
-      const serialNumber = await generateSerialNumber();
-      setPendingSerial(serialNumber);
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
@@ -159,55 +146,22 @@ export default function CameraTab() {
         return;
       }
 
+      const serialNumber = await generateSerialNumber();
       const id = generateId();
       const now = new Date();
 
-      let finalUri: string;
-
-      if (overlayRef.current) {
-        try {
-          const overlayUri = await captureRef(overlayRef.current, {
-            format: "jpg",
-            quality: 0.9,
-            width: 1200,
-            height: 900,
-          });
-
-          const compressed = await ImageManipulator.manipulateAsync(
-            overlayUri,
-            [],
-            {
-              compress: 0.55,
-              format: ImageManipulator.SaveFormat.JPEG,
-            },
-          );
-          finalUri = compressed.uri;
-        } catch {
-          const compressed = await ImageManipulator.manipulateAsync(
-            photo.uri,
-            [{ resize: { width: 1200 } }],
-            {
-              compress: 0.55,
-              format: ImageManipulator.SaveFormat.JPEG,
-            },
-          );
-          finalUri = compressed.uri;
-        }
-      } else {
-        const compressed = await ImageManipulator.manipulateAsync(
-          photo.uri,
-          [{ resize: { width: 1200 } }],
-          {
-            compress: 0.55,
-            format: ImageManipulator.SaveFormat.JPEG,
-          },
-        );
-        finalUri = compressed.uri;
-      }
+      const compressed = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 1200 } }],
+        {
+          compress: 0.55,
+          format: ImageManipulator.SaveFormat.JPEG,
+        },
+      );
 
       const fileName = `${serialNumber}.jpg`;
       const destUri = `${getPhotosDirectory()}${fileName}`;
-      await FileSystem.moveAsync({ from: finalUri, to: destUri });
+      await FileSystem.moveAsync({ from: compressed.uri, to: destUri });
 
       await incrementUploadCount();
 
@@ -231,7 +185,6 @@ export default function CameraTab() {
       Alert.alert("Error", "Failed to capture photo. Please try again.");
     } finally {
       setIsCapturing(false);
-      setPendingSerial("");
     }
   }, [isCapturing, latitude, longitude, address, addPhoto, uploadCount, maxGuestUploads]);
 
@@ -260,7 +213,12 @@ export default function CameraTab() {
 
   if (!cameraPermission.granted || !locationPermission.granted) {
     return (
-      <View style={[styles.permissionContainer, { paddingTop: Platform.OS === "web" ? 67 + insets.top : insets.top + 20 }]}>
+      <View
+        style={[
+          styles.permissionContainer,
+          { paddingTop: Platform.OS === "web" ? 67 + insets.top : insets.top + 20 },
+        ]}
+      >
         <View style={styles.permissionCard}>
           <View style={styles.permissionIconWrap}>
             <Ionicons name="camera" size={48} color={Colors.light.primary} />
@@ -270,8 +228,8 @@ export default function CameraTab() {
             GPS Camera needs camera and location access to take geo-tagged photos.
           </Text>
 
-          {!cameraPermission.granted && (
-            cameraDeniedPermanently && Platform.OS !== "web" ? (
+          {!cameraPermission.granted &&
+            (cameraDeniedPermanently && Platform.OS !== "web" ? (
               <Pressable
                 style={({ pressed }) => [
                   styles.permissionButton,
@@ -279,7 +237,6 @@ export default function CameraTab() {
                   { opacity: pressed ? 0.85 : 1 },
                 ]}
                 onPress={openSettings}
-                testID="open-settings-camera"
               >
                 <Ionicons name="settings-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Open Settings for Camera</Text>
@@ -291,16 +248,14 @@ export default function CameraTab() {
                   { opacity: pressed ? 0.85 : 1 },
                 ]}
                 onPress={requestCameraPermission}
-                testID="grant-camera"
               >
                 <Ionicons name="camera-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Allow Camera</Text>
               </Pressable>
-            )
-          )}
+            ))}
 
-          {!locationPermission.granted && (
-            locationDeniedPermanently && Platform.OS !== "web" ? (
+          {!locationPermission.granted &&
+            (locationDeniedPermanently && Platform.OS !== "web" ? (
               <Pressable
                 style={({ pressed }) => [
                   styles.permissionButton,
@@ -308,7 +263,6 @@ export default function CameraTab() {
                   { opacity: pressed ? 0.85 : 1 },
                 ]}
                 onPress={openSettings}
-                testID="open-settings-location"
               >
                 <Ionicons name="settings-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Open Settings for Location</Text>
@@ -321,28 +275,25 @@ export default function CameraTab() {
                   { opacity: pressed ? 0.85 : 1 },
                 ]}
                 onPress={requestLocationPermission}
-                testID="grant-location"
               >
                 <Ionicons name="location-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Allow Location</Text>
               </Pressable>
-            )
-          )}
+            ))}
         </View>
       </View>
     );
   }
 
-  const currentSerial = pendingSerial || "PREVIEW";
-
   return (
     <View style={styles.container}>
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing={facing}
-      >
-        <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
+      <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
+        <View
+          style={[
+            styles.topBar,
+            { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 },
+          ]}
+        >
           <View style={styles.gpsLiveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.gpsLiveText}>GPS LIVE</Text>
@@ -359,7 +310,6 @@ export default function CameraTab() {
                 { opacity: pressed ? 0.7 : 1 },
               ]}
               onPress={toggleCamera}
-              testID="toggle-camera"
             >
               <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
             </Pressable>
@@ -379,69 +329,51 @@ export default function CameraTab() {
             </Text>
           </View>
         </View>
-      </CameraView>
 
-      <View
-        ref={overlayRef}
-        style={styles.overlayCapture}
-        collapsable={false}
-      >
-        <Image
-          source={{ uri: lastCapturedUri || undefined }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-        />
-        <PhotoOverlay
-          latitude={latitude}
-          longitude={longitude}
-          address={address}
-          serialNumber={currentSerial}
-          timestamp={new Date().toLocaleString()}
-        />
-      </View>
-
-      <View style={[styles.bottomControls, { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 84 }]}>
-        <View style={styles.controlsRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.galleryPreview,
-              { opacity: pressed ? 0.8 : 1 },
-            ]}
-            testID="gallery-preview"
+        <View style={styles.bottomControls}>
+          <View
+            style={{
+              paddingBottom:
+                Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
+              paddingTop: 20,
+            }}
           >
-            {lastCapturedUri ? (
-              <Image
-                source={{ uri: lastCapturedUri }}
-                style={styles.galleryThumb}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.galleryEmpty}>
-                <Ionicons name="images-outline" size={22} color="#999" />
-              </View>
-            )}
-          </Pressable>
+            <View style={styles.controlsRow}>
+              <Pressable style={styles.galleryPreview}>
+                {lastCapturedUri ? (
+                  <Image
+                    source={{ uri: lastCapturedUri }}
+                    style={styles.galleryThumb}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={styles.galleryEmpty}>
+                    <Ionicons name="images-outline" size={22} color="#999" />
+                  </View>
+                )}
+              </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.captureButton,
-              isCapturing && styles.captureButtonDisabled,
-              { transform: [{ scale: pressed ? 0.92 : 1 }] },
-            ]}
-            onPress={capturePhoto}
-            disabled={isCapturing}
-            testID="capture-button"
-          >
-            {isCapturing ? (
-              <ActivityIndicator size="small" color={Colors.light.primary} />
-            ) : (
-              <View style={styles.captureInner} />
-            )}
-          </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.captureButton,
+                  isCapturing && styles.captureButtonDisabled,
+                  { transform: [{ scale: pressed ? 0.92 : 1 }] },
+                ]}
+                onPress={capturePhoto}
+                disabled={isCapturing}
+              >
+                {isCapturing ? (
+                  <ActivityIndicator size="small" color={Colors.light.primary} />
+                ) : (
+                  <View style={styles.captureInner} />
+                )}
+              </Pressable>
 
-          <View style={styles.placeholderButton} />
+              <View style={styles.placeholderButton} />
+            </View>
+          </View>
         </View>
-      </View>
+      </CameraView>
     </View>
   );
 }
@@ -604,21 +536,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginLeft: 20,
   },
-  overlayCapture: {
-    position: "absolute",
-    top: -2000,
-    left: 0,
-    width: 1200,
-    height: 900,
-    overflow: "hidden",
-  },
   bottomControls: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: "rgba(0,0,0,0.6)",
-    paddingTop: 20,
   },
   controlsRow: {
     flexDirection: "row",

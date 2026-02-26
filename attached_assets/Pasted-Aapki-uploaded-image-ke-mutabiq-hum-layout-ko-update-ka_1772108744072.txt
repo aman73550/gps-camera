@@ -1,0 +1,39 @@
+Aapki uploaded image ke mutabiq, hum layout ko update kar rahe hain. Ab map ki jagah QR Code aur uske niche Serial Number hoga, aur baki geo-details bilkul w वैise hi dikhengi jaisa aapne image me dikhaya hai.
+Yahan aapka complete Master AI Instruction Set hai jo aap kisi bhi AI (Cursor, Claude, ya ChatGPT) ko de sakte hain:
+🚀 Final Master Instruction: GPS Camera Map (Google Material 3)
+Project Goal: Build a secure GPS Camera app where images are "burned" with a specific metadata overlay, compressed for server efficiency, and locked into an internal ecosystem.
+🎨 1. UI & Overlay Design (Based on image.png)
+App ko ek semi-transparent Overlay Box banana hai jo photo ke niche fix hoga:
+ * Background: Semi-transparent black rounded-rectangle.
+ * Left Section: Map ki jagah ek QR Code (Serial Number se generate kiya hua) aur uske thik niche Serial Number text format me.
+ * Right Section: * Line 1: Bold Location Name (Google Maps API se).
+   * Line 2 & 3: Full Address (Street, City, Pin, Country).
+   * Line 4: Plus Code aur Date/Time.
+   * Line 5: Custom Note (Optional).
+   * Bottom Row: Wind Speed, Humidity, aur Altitude ke icons aur values (Material Design Icons).
+📸 2. Camera & Files Navigation
+App me niche sirf do navigation buttons honge:
+ * Camera Tab: Isme direct camera preview hoga. Click karte hi overlay burn hoga, image compress hogi, aur private folder me save hogi.
+ * Files Tab: Isme integrated gallery hogi (Mark, Share, Delete features ke sath).
+   * Top Bar: Pill-shaped Search bar serial number ke liye aur QR Scan icon.
+   * Restriction: Is gallery me sirf app se click ki gayi photos dikhengi. System gallery se kuch bhi import nahi hoga.
+🛡️ 3. Security & Anti-Hack Logic
+ * Storage: Images ko getApplicationDocumentsDirectory() me save karna hai (Hidden from system gallery).
+ * Verification: Ek local SQLite database maintain karna hai. Har click ki gayi photo ka path aur serial number wahan save hoga.
+ * No External Upload: Upload button sirf tab active hoga jab file path SQLite database me "Whitelisted" paya jayega. User bahar se koi photo folder me daal dega toh woh upload nahi hogi.
+📉 4. Image Compression & Upload
+ * Compression Engine: Image capture ke baad, use flutter_image_compress se tab tak loop me compress karein jab tak uska size 200KB - 300KB ke beech na aa jaye. Geo-details clear honi chahiye.
+ * User Tiers:
+   * Guest User: Device ID se track karein, sirf 20 uploads allowed.
+   * Logged User (Firebase): Unlimited uploads allowed.
+🤖 AI Coder ko dene ke liye Specific Prompt:
+> "Build a Flutter app with two bottom navigation tabs: 'Camera' and 'Files'.
+>  * Overlay: Create a photo overlay similar to 'image.png' but replace the map with a QR code and its serial number below it. Use Material 3 design.
+>  * Capture: When a photo is clicked, fetch GPS, Address, Wind, and Humidity. Burn these onto the image with the QR code.
+>  * Secure Storage: Save images to a private internal directory. Use SQLite to whitelist every captured image.
+>  * Files Tab: Display images in a grid from internal storage only. Implement a search by serial number and a QR scanner to find images.
+>  * Compression: Force image size to 200kb-300kb using recursive compression before saving.
+>  * Upload Logic: Verify SQLite whitelist before upload. Limit Guest users to 20 uploads via Firebase."
+> 
+Agla kadam:
+Kya aap chahte hain ki main iska Firebase Storage aur Firestore ka setup code likhun taaki images aur serial numbers server par sahi se organize ho sakein?
