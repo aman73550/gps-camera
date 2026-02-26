@@ -42,16 +42,25 @@ export async function getUserTier(
   }
 }
 
-export async function checkRequiredVersion(): Promise<string | null> {
-  if (!supabase) return null;
+export interface VersionCheckResult {
+  requiredVersion: string | null;
+  forceUpdate: boolean;
+}
+
+export async function checkRequiredVersion(): Promise<VersionCheckResult> {
+  if (!supabase) return { requiredVersion: null, forceUpdate: false };
   try {
     const { data } = await supabase
       .from("app_settings")
-      .select("required_version")
+      .select("required_version, force_update")
       .eq("id", 1)
       .single();
-    return (data as { required_version?: string } | null)?.required_version ?? null;
+    const row = data as { required_version?: string; force_update?: boolean } | null;
+    return {
+      requiredVersion: row?.required_version ?? null,
+      forceUpdate: row?.force_update ?? false,
+    };
   } catch {
-    return null;
+    return { requiredVersion: null, forceUpdate: false };
   }
 }

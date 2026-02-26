@@ -12,6 +12,8 @@ export interface AppSettings {
   id: number;
   delete_after_months: number;
   auto_delete_enabled: boolean;
+  required_version?: string;
+  force_update?: boolean;
   updated_at?: string;
 }
 

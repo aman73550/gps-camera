@@ -312,6 +312,39 @@
     <div id="page-settings" class="page">
       <h2 class="page-title">Settings</h2>
 
+      <div class="settings-section" style="border:2px solid #FF5252;border-radius:16px;padding:24px">
+        <h3 style="color:#D32F2F">🚨 Force Update Control</h3>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">
+          <strong>Force Update</strong> blocks all users on older versions with a non-dismissible screen until they update.
+          Use when releasing critical security patches.<br><br>
+          Set the minimum required version and/or enable the force block flag.
+        </p>
+        <div class="form-row">
+          <label class="form-label">Minimum Required Version</label>
+          <input type="text" id="required-version" placeholder="e.g. 1.2.0" style="width:140px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+          <p class="form-hint">Users below this version will be hard-blocked. Set to <code>1.0.0</code> to allow all versions.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Force Block All Users</label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="force-update-toggle" onchange="updateForceLabel()">
+              <span class="toggle-slider"></span>
+            </label>
+            <span id="force-label" style="font-size:13px;color:#D32F2F;font-weight:600">OFF</span>
+          </div>
+          <p class="form-hint" style="color:#D32F2F">⚠️ When ON, ALL users regardless of version will see the update screen.</p>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <button class="save-btn" onclick="saveVersionSettings()">Save Version Settings</button>
+          <button onclick="pushForceUpdate()" style="background:#D32F2F;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">
+            🔴 Push Force Update
+          </button>
+        </div>
+        <p id="version-saved" class="success-msg">✓ Version settings saved.</p>
+        <p id="force-pushed" style="display:none;color:#D32F2F;font-size:13px;margin-top:8px;font-weight:600">⚠️ Force update is now ACTIVE. All users are blocked.</p>
+      </div>
+
       <div class="settings-section">
         <h3>🗑️ Retention Policy</h3>
         <div class="form-row">
@@ -532,7 +565,10 @@ async function loadSettings() {
   const s = await r.json();
   document.getElementById('retention-period').value = s.delete_after_months || 0;
   document.getElementById('auto-delete-toggle').checked = !!s.auto_delete_enabled;
+  document.getElementById('required-version').value = s.required_version || '1.0.0';
+  document.getElementById('force-update-toggle').checked = !!s.force_update;
   updateToggleLabel();
+  updateForceLabel();
 }
 
 function updateToggleLabel() {
@@ -540,6 +576,42 @@ function updateToggleLabel() {
   document.getElementById('toggle-label').textContent = on ? 'Enabled' : 'Disabled';
 }
 document.getElementById('auto-delete-toggle').addEventListener('change', updateToggleLabel);
+
+function updateForceLabel() {
+  const on = document.getElementById('force-update-toggle').checked;
+  document.getElementById('force-label').textContent = on ? '🔴 ON — Users are BLOCKED' : 'OFF';
+}
+
+async function saveVersionSettings() {
+  const version = document.getElementById('required-version').value.trim() || '1.0.0';
+  const forceUpdate = document.getElementById('force-update-toggle').checked;
+  const r = await api('/api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify({ required_version: version, force_update: forceUpdate })
+  });
+  if (r.ok) {
+    const msg = document.getElementById('version-saved');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+    const fp = document.getElementById('force-pushed');
+    fp.style.display = forceUpdate ? 'block' : 'none';
+  }
+}
+
+async function pushForceUpdate() {
+  if (!confirm('⚠️ This will BLOCK ALL users until they update. Are you sure?')) return;
+  const version = document.getElementById('required-version').value.trim() || '1.0.0';
+  const r = await api('/api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify({ force_update: true, required_version: version })
+  });
+  if (r.ok) {
+    document.getElementById('force-update-toggle').checked = true;
+    updateForceLabel();
+    document.getElementById('force-pushed').style.display = 'block';
+    alert('✅ Force update is now ACTIVE. All users will see the update screen.');
+  }
+}
 
 async function saveSettings() {
   const period = parseInt(document.getElementById('retention-period').value);

@@ -38,13 +38,15 @@ CREATE TABLE IF NOT EXISTS app_settings (
   delete_after_months INTEGER NOT NULL DEFAULT 0,
   auto_delete_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   required_version TEXT NOT NULL DEFAULT '1.0.0',
+  force_update BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Seed default settings row
-INSERT INTO app_settings (id, delete_after_months, auto_delete_enabled, required_version)
-VALUES (1, 0, FALSE, '1.0.0')
+INSERT INTO app_settings (id, delete_after_months, auto_delete_enabled, required_version, force_update)
+VALUES (1, 0, FALSE, '1.0.0', FALSE)
 ON CONFLICT (id) DO NOTHING;
 
--- Migration: add required_version if the table already exists without it
+-- Migration: add columns if the table already exists without them
 ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS required_version TEXT NOT NULL DEFAULT '1.0.0';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS force_update BOOLEAN NOT NULL DEFAULT FALSE;

@@ -1,10 +1,9 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
-import {
-  GestureHandlerRootView,
-} from "react-native-gesture-handler";
+import * as Updates from "expo-updates";
+import React, { useEffect, useRef, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   useFonts,
@@ -14,13 +13,14 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
+  BackHandler,
   Linking,
   Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -35,6 +35,8 @@ const APP_VERSION = "1.0.0";
 const APP_STORE_URL = "https://apps.apple.com/app/gps-camera";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.gpscamera";
 
+type BootState = "checking" | "blocked" | "ok";
+
 function isVersionLower(current: string, required: string): boolean {
   const parse = (v: string) => v.split(".").map(Number);
   const [cMaj, cMin, cPat] = parse(current);
@@ -44,109 +46,74 @@ function isVersionLower(current: string, required: string): boolean {
   return cPat < rPat;
 }
 
-function UpdateModal({ visible }: { visible: boolean }) {
+function HardBlockScreen() {
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, []);
+
   const openStore = () => {
     const url = Platform.OS === "android" ? PLAY_STORE_URL : APP_STORE_URL;
     Linking.openURL(url).catch(() => {});
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={() => {}}
-    >
-      <View style={updateStyles.overlay}>
-        <View style={updateStyles.card}>
-          <View style={updateStyles.iconWrap}>
-            <Ionicons name="arrow-up-circle" size={48} color={Colors.light.primary} />
-          </View>
-          <Text style={updateStyles.title}>Update Required</Text>
-          <Text style={updateStyles.body}>
-            A newer version of GPS Camera is required to continue. Please update the app to access all features.
-          </Text>
-          <Text style={updateStyles.versionHint}>
-            Your version: {APP_VERSION}
-          </Text>
-          <Pressable
-            style={({ pressed }) => [updateStyles.button, { opacity: pressed ? 0.85 : 1 }]}
-            onPress={openStore}
-          >
-            <Ionicons name="download-outline" size={18} color="#FFF" />
-            <Text style={updateStyles.buttonText}>Update Now</Text>
-          </Pressable>
+    <View style={blockStyles.root}>
+      <View style={blockStyles.card}>
+        <View style={blockStyles.shieldWrap}>
+          <Ionicons name="shield-checkmark" size={64} color={Colors.light.primary} />
         </View>
+        <Text style={blockStyles.title}>Update Required</Text>
+        <Text style={blockStyles.body}>
+          This version of GPS Camera is no longer supported. Please update to continue using the app safely.
+        </Text>
+        <Text style={blockStyles.versionChip}>Your version: {APP_VERSION}</Text>
+        <Pressable
+          style={({ pressed }) => [blockStyles.updateBtn, { opacity: pressed ? 0.85 : 1 }]}
+          onPress={openStore}
+        >
+          <Ionicons name="download-outline" size={18} color="#FFF" />
+          <Text style={blockStyles.updateBtnText}>Update Now</Text>
+        </Pressable>
+        <Text style={blockStyles.footer}>
+          You must update to continue. The app cannot be used on this version.
+        </Text>
       </View>
-    </Modal>
+    </View>
   );
 }
 
-const updateStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 28,
-    padding: 32,
-    alignItems: "center",
-    width: "100%",
-    maxWidth: 340,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  iconWrap: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: "#1a1a1a",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  body: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#555",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  versionHint: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#999",
-    marginBottom: 24,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.light.primary,
-    borderRadius: 28,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    width: "100%",
-  },
-  buttonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-});
+function OtaSnackbar({ visible }: { visible: boolean }) {
+  const translateY = useRef(new Animated.Value(100)).current;
 
-SplashScreen.preventAutoHideAsync();
+  useEffect(() => {
+    Animated.spring(translateY, {
+      toValue: visible ? 0 : 100,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  }, [visible, translateY]);
+
+  const handleRestart = async () => {
+    try {
+      await Updates.reloadAsync();
+    } catch {}
+  };
+
+  return (
+    <Animated.View
+      style={[snackStyles.container, { transform: [{ translateY }] }]}
+      pointerEvents={visible ? "auto" : "none"}
+    >
+      <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+      <Text style={snackStyles.text}>New version downloaded. Restart to apply.</Text>
+      <Pressable onPress={handleRestart}>
+        <Text style={snackStyles.restartBtn}>Restart</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -172,6 +139,8 @@ function RootLayoutNav() {
   );
 }
 
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -179,22 +148,48 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [bootState, setBootState] = useState<BootState>("checking");
+  const [otaReady, setOtaReady] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-      cleanExpiredTrash(7).catch(() => {});
-      checkRequiredVersion().then((requiredVersion) => {
-        if (requiredVersion && isVersionLower(APP_VERSION, requiredVersion)) {
-          setShowUpdateModal(true);
-        }
+    checkRequiredVersion()
+      .then(({ requiredVersion, forceUpdate }) => {
+        const isBlocked =
+          forceUpdate ||
+          (requiredVersion !== null && isVersionLower(APP_VERSION, requiredVersion));
+        setBootState(isBlocked ? "blocked" : "ok");
+      })
+      .catch(() => {
+        setBootState("ok");
       });
-    }
-  }, [fontsLoaded]);
+  }, []);
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (!fontsLoaded || bootState === "checking") return;
+    SplashScreen.hideAsync();
+
+    if (bootState === "ok") {
+      cleanExpiredTrash(7).catch(() => {});
+      if (Updates.isEnabled) {
+        (async () => {
+          try {
+            const update = await Updates.checkForUpdateAsync();
+            if (update.isAvailable) {
+              await Updates.fetchUpdateAsync();
+              setOtaReady(true);
+            }
+          } catch {}
+        })();
+      }
+    }
+  }, [fontsLoaded, bootState]);
+
+  if (!fontsLoaded || bootState === "checking") {
     return null;
+  }
+
+  if (bootState === "blocked") {
+    return <HardBlockScreen />;
   }
 
   return (
@@ -205,7 +200,7 @@ export default function RootLayout() {
             <GestureHandlerRootView>
               <KeyboardProvider>
                 <RootLayoutNav />
-                <UpdateModal visible={showUpdateModal} />
+                <OtaSnackbar visible={otaReady} />
               </KeyboardProvider>
             </GestureHandlerRootView>
           </PhotoProvider>
@@ -214,3 +209,115 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+const blockStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    padding: 32,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 360,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  shieldWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.light.primaryContainer,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#1a1a1a",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  body: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  versionChip: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#888",
+    backgroundColor: Colors.light.surfaceVariant,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  updateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.light.primary,
+    borderRadius: 28,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    width: "100%",
+    marginBottom: 16,
+  },
+  updateBtnText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  footer: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#bbb",
+    textAlign: "center",
+  },
+});
+
+const snackStyles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    bottom: Platform.OS === "web" ? 34 : 90,
+    left: 16,
+    right: 16,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  text: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#FFF",
+  },
+  restartBtn: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#4CAF50",
+  },
+});
