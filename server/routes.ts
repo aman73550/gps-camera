@@ -76,14 +76,14 @@ async function tierCheckMiddleware(
   }
 }
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
 function adminAuth(req: Request, res: Response, next: NextFunction) {
-  if (!ADMIN_SECRET) return next();
-  const token =
-    (req.headers["x-admin-token"] as string) ||
-    (req.query.token as string);
-  if (token !== ADMIN_SECRET) {
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) return next();
+  const username = req.headers["x-admin-username"] as string | undefined;
+  const password = req.headers["x-admin-password"] as string | undefined;
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   next();
