@@ -1,9 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import * as Updates from "expo-updates";
-import { reloadAppAsync } from "expo";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
@@ -21,7 +19,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -85,42 +82,6 @@ function HardBlockScreen() {
   );
 }
 
-function OtaSnackbar({ visible }: { visible: boolean }) {
-  const translateY = useRef(new Animated.Value(100)).current;
-  const [dismissed, setDismissed] = useState(false);
-
-  const isShown = visible && !dismissed;
-
-  useEffect(() => {
-    Animated.spring(translateY, {
-      toValue: isShown ? 0 : 100,
-      useNativeDriver: true,
-      friction: 8,
-    }).start();
-  }, [isShown, translateY]);
-
-  const handleRestart = async () => {
-    try {
-      await reloadAppAsync();
-    } catch {}
-  };
-
-  return (
-    <Animated.View
-      style={[snackStyles.container, { transform: [{ translateY }] }]}
-      pointerEvents={isShown ? "auto" : "none"}
-    >
-      <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
-      <Text style={snackStyles.text}>New version downloaded. Restart to apply.</Text>
-      <Pressable onPress={handleRestart}>
-        <Text style={snackStyles.restartBtn}>Restart</Text>
-      </Pressable>
-      <Pressable onPress={() => setDismissed(true)} hitSlop={10}>
-        <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 function RootLayoutNav() {
   return (
@@ -156,7 +117,6 @@ export default function RootLayout() {
     Inter_700Bold,
   });
   const [bootState, setBootState] = useState<BootState>("checking");
-  const [otaReady, setOtaReady] = useState(false);
 
   useEffect(() => {
     checkRequiredVersion()
@@ -177,17 +137,6 @@ export default function RootLayout() {
 
     if (bootState === "ok") {
       cleanExpiredTrash(7).catch(() => {});
-      if (!__DEV__ && Updates.isEnabled) {
-        (async () => {
-          try {
-            const update = await Updates.checkForUpdateAsync();
-            if (update.isAvailable) {
-              await Updates.fetchUpdateAsync();
-              setOtaReady(true);
-            }
-          } catch {}
-        })();
-      }
     }
   }, [fontsLoaded, bootState]);
 
@@ -207,7 +156,6 @@ export default function RootLayout() {
             <GestureHandlerRootView>
               <KeyboardProvider>
                 <RootLayoutNav />
-                <OtaSnackbar visible={otaReady} />
               </KeyboardProvider>
             </GestureHandlerRootView>
           </PhotoProvider>
@@ -297,34 +245,3 @@ const blockStyles = StyleSheet.create({
   },
 });
 
-const snackStyles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: Platform.OS === "web" ? 34 : 90,
-    left: 16,
-    right: 16,
-    backgroundColor: "#1a1a1a",
-    borderRadius: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  text: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#FFF",
-  },
-  restartBtn: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#4CAF50",
-  },
-});
