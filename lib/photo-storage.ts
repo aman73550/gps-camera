@@ -88,7 +88,7 @@ async function _writeAll(photos: PhotoRecord[]): Promise<void> {
 export async function getAllPhotos(): Promise<PhotoRecord[]> {
   const all = await _readAllRaw();
   return all
-    .filter((p) => !p.deletedAt)
+    .filter((p) => !p.deletedAt && !p.serverDeleteRequested)
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 

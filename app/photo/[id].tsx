@@ -22,8 +22,8 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { QRCodeView } from "@/components/QRCodeView";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
-import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhoto, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR } from "@/lib/upload";
+import { PhotoRecord, markServerDeleteRequested } from "@/lib/photo-storage";
+import { uploadPhoto, getServerBase, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR } from "@/lib/upload";
 import { captureRef } from "react-native-view-shot";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -178,6 +178,36 @@ export default function PhotoDetailScreen() {
     }
   };
 
+  const handleRequestServerDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      "Remove from Server",
+      "This will send a deletion request to the admin. Your photo will be hidden from your gallery immediately and permanently removed after admin approval.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Request Deletion",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await fetch(`${getServerBase()}/api/user/request-delete`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(user?.phone ? { "x-user-phone": user.phone } : {}),
+                },
+                body: JSON.stringify({ serialNumber: photo.serialNumber }),
+              });
+            } catch {}
+            await markServerDeleteRequested(photo.id);
+            await refreshPhotos();
+            router.back();
+          },
+        },
+      ],
+    );
+  };
+
   const openInMaps = (label: string, googleUrl: string, appleUrl: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (Platform.OS === "ios") {
@@ -277,17 +307,30 @@ export default function PhotoDetailScreen() {
             </Pressable>
 
             <Pressable
-              style={({ pressed }) => [styles.actionBtn, { opacity: (pressed || isUploading) ? 0.75 : 1 }]}
-              onPress={handleUpload}
+              style={({ pressed }) => [
+                styles.actionBtn,
+                { opacity: (pressed || isUploading) ? 0.75 : 1 },
+              ]}
+              onPress={photo.uploadedAt ? handleRequestServerDelete : handleUpload}
               disabled={isUploading}
             >
-              <View style={[styles.actionIconWrap, styles.uploadIconWrap]}>
+              <View style={[
+                styles.actionIconWrap,
+                photo.uploadedAt ? styles.uploadedIconWrap : styles.uploadIconWrap,
+              ]}>
                 {isUploading
                   ? <ActivityIndicator size="small" color="#FFF" />
-                  : <Ionicons name="cloud-upload-outline" size={22} color="#FFF" />
+                  : photo.uploadedAt
+                    ? <Ionicons name="checkmark-circle" size={22} color="#FFF" />
+                    : <Ionicons name="cloud-upload-outline" size={22} color="#FFF" />
                 }
               </View>
-              <Text style={styles.actionLabel}>{isUploading ? uploadStatus || "…" : "Upload"}</Text>
+              <Text style={[
+                styles.actionLabel,
+                photo.uploadedAt && !isUploading ? { color: Colors.light.success } : {},
+              ]}>
+                {isUploading ? uploadStatus || "…" : photo.uploadedAt ? "Uploaded" : "Upload"}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -447,6 +490,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   uploadIconWrap: { backgroundColor: Colors.light.primary },
+  uploadedIconWrap: { backgroundColor: Colors.light.success },
   deleteIconWrap: { backgroundColor: "rgba(255,69,58,0.1)" },
   actionLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary },
   detailsContainer: { padding: 20 },

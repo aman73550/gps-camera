@@ -19,7 +19,7 @@ export const GUEST_LIMIT_ERROR = "GUEST_LIMIT_REACHED";
 export const DAILY_LIMIT_ERROR = "DAILY_LIMIT_REACHED";
 export const MONTHLY_LIMIT_ERROR = "MONTHLY_LIMIT_REACHED";
 
-function getServerBase(): string {
+export function getServerBase(): string {
   if (Platform.OS === "web") return "";
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) {
