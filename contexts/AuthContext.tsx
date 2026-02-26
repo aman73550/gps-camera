@@ -12,7 +12,7 @@ const AUTH_KEY = "auth_user";
 
 export interface AuthUser {
   name: string;
-  email: string;
+  phone: string;
 }
 
 interface AuthContextValue {
@@ -21,7 +21,7 @@ interface AuthContextValue {
   loginModalVisible: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (phone: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -41,17 +41,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const trimmed = email.trim();
-    if (!trimmed || !password.trim()) {
-      throw new Error("Please enter your email and password.");
+  const login = useCallback(async (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) {
+      throw new Error("Please enter a valid mobile number (at least 10 digits).");
     }
-    if (!trimmed.includes("@")) {
-      throw new Error("Please enter a valid email address.");
+    if (digits.length > 15) {
+      throw new Error("Mobile number is too long.");
     }
+    const last4 = digits.slice(-4);
     const u: AuthUser = {
-      name: trimmed.split("@")[0],
-      email: trimmed.toLowerCase(),
+      name: `User ${last4}`,
+      phone: phone.trim(),
     };
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
     setUser(u);

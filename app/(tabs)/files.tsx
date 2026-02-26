@@ -333,7 +333,7 @@ export default function FilesTab() {
             <Text style={styles.headerSub}>
               {photos.length} photo{photos.length !== 1 ? "s" : ""}
               {isLoggedIn
-                ? ` · ${user?.name ?? "Signed in"}`
+                ? ` · ${user?.phone ?? "Signed in"}`
                 : ` · Guest ${uploadCount}/${maxGuestUploads}`}
             </Text>
           </View>
@@ -343,7 +343,7 @@ export default function FilesTab() {
             onPress={() => {
               if (isLoggedIn) {
                 Alert.alert(
-                  `Signed in as ${user?.email}`,
+                  `Signed in as ${user?.phone}`,
                   "You have unlimited uploads.",
                   [
                     { text: "Sign Out", style: "destructive", onPress: logout },
@@ -360,7 +360,7 @@ export default function FilesTab() {
               <>
                 <View style={styles.authAvatarCircle}>
                   <Text style={styles.authAvatarText}>
-                    {(user?.name ?? "U")[0].toUpperCase()}
+                    {user?.phone ? user.phone.replace(/\D/g, "").slice(-1) : "U"}
                   </Text>
                 </View>
                 <View style={styles.authGreenDot} />

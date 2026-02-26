@@ -401,7 +401,7 @@ export default function CameraTab() {
               onPress={() => {
                 if (isLoggedIn) {
                   Alert.alert(
-                    `Hi, ${user?.name}`,
+                    `Signed in: ${user?.phone}`,
                     "You have unlimited uploads.",
                     [
                       { text: "Sign Out", style: "destructive", onPress: logout },
@@ -417,7 +417,7 @@ export default function CameraTab() {
                 <>
                   <View style={styles.authAvatarSmall}>
                     <Text style={styles.authAvatarSmallText}>
-                      {(user?.name ?? "U")[0].toUpperCase()}
+                      {user?.phone ? user.phone.replace(/\D/g, "").slice(-1) : "U"}
                     </Text>
                   </View>
                   <View style={styles.authGreenDot} />

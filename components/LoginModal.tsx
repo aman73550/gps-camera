@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Modal,
   View,
@@ -9,11 +9,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
+
+const COUNTRY_CODES = [
+  { code: "+1", flag: "🇺🇸", label: "US" },
+  { code: "+44", flag: "🇬🇧", label: "UK" },
+  { code: "+91", flag: "🇮🇳", label: "IN" },
+  { code: "+61", flag: "🇦🇺", label: "AU" },
+  { code: "+86", flag: "🇨🇳", label: "CN" },
+  { code: "+49", flag: "🇩🇪", label: "DE" },
+  { code: "+33", flag: "🇫🇷", label: "FR" },
+  { code: "+81", flag: "🇯🇵", label: "JP" },
+  { code: "+55", flag: "🇧🇷", label: "BR" },
+  { code: "+27", flag: "🇿🇦", label: "ZA" },
+  { code: "+92", flag: "🇵🇰", label: "PK" },
+  { code: "+880", flag: "🇧🇩", label: "BD" },
+  { code: "+971", flag: "🇦🇪", label: "AE" },
+  { code: "+966", flag: "🇸🇦", label: "SA" },
+];
 
 interface Props {
   visible: boolean;
@@ -22,20 +38,22 @@ interface Props {
 
 export function LoginModal({ visible, onClose }: Props) {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0]);
+  const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
     setError("");
     setIsLoading(true);
     try {
-      await login(email, password);
-      setEmail("");
-      setPassword("");
+      const fullNumber = `${countryCode.code}${phone.trim()}`;
+      await login(fullNumber);
+      setPhone("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Login failed. Please try again.");
+      setError(e instanceof Error ? e.message : "Sign in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -43,6 +61,8 @@ export function LoginModal({ visible, onClose }: Props) {
 
   const handleClose = () => {
     setError("");
+    setPhone("");
+    setShowPicker(false);
     onClose();
   };
 
@@ -65,15 +85,16 @@ export function LoginModal({ visible, onClose }: Props) {
               <Ionicons name="close" size={20} color={Colors.light.textSecondary} />
             </Pressable>
 
+            {/* Icon */}
             <View style={styles.iconWrap}>
               <View style={styles.iconCircle}>
-                <Ionicons name="person" size={36} color={Colors.light.primary} />
+                <Ionicons name="phone-portrait-outline" size={36} color={Colors.light.primary} />
               </View>
             </View>
 
-            <Text style={styles.title}>Sign In</Text>
+            <Text style={styles.title}>Enter Mobile Number</Text>
             <Text style={styles.subtitle}>
-              Unlock unlimited uploads and sync across devices
+              Enter your mobile number to sign in and unlock unlimited uploads
             </Text>
 
             {!!error && (
@@ -83,35 +104,76 @@ export function LoginModal({ visible, onClose }: Props) {
               </View>
             )}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Email address"
-              value={email}
-              onChangeText={(t) => { setEmail(t); setError(""); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholderTextColor={Colors.light.textTertiary}
-              returnKeyType="next"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={(t) => { setPassword(t); setError(""); }}
-              secureTextEntry
-              placeholderTextColor={Colors.light.textTertiary}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+            {/* Phone input row */}
+            <View style={styles.phoneRow}>
+              {/* Country code picker */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.countryBtn,
+                  showPicker && styles.countryBtnActive,
+                  { opacity: pressed ? 0.75 : 1 },
+                ]}
+                onPress={() => setShowPicker((p) => !p)}
+              >
+                <Text style={styles.flagText}>{countryCode.flag}</Text>
+                <Text style={styles.codeText}>{countryCode.code}</Text>
+                <Ionicons
+                  name={showPicker ? "chevron-up" : "chevron-down"}
+                  size={14}
+                  color={Colors.light.textSecondary}
+                />
+              </Pressable>
+
+              {/* Number input */}
+              <TextInput
+                ref={inputRef}
+                style={styles.phoneInput}
+                placeholder="Mobile number"
+                value={phone}
+                onChangeText={(t) => {
+                  setPhone(t.replace(/[^\d\s\-]/g, ""));
+                  setError("");
+                }}
+                keyboardType="phone-pad"
+                placeholderTextColor={Colors.light.textTertiary}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                maxLength={15}
+              />
+            </View>
+
+            {/* Country picker dropdown */}
+            {showPicker && (
+              <View style={styles.pickerDropdown}>
+                {COUNTRY_CODES.map((cc) => (
+                  <Pressable
+                    key={cc.code + cc.label}
+                    style={({ pressed }) => [
+                      styles.pickerItem,
+                      cc.code === countryCode.code && styles.pickerItemActive,
+                      { opacity: pressed ? 0.7 : 1 },
+                    ]}
+                    onPress={() => {
+                      setCountryCode(cc);
+                      setShowPicker(false);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <Text style={styles.flagText}>{cc.flag}</Text>
+                    <Text style={styles.pickerLabel}>{cc.label}</Text>
+                    <Text style={styles.pickerCode}>{cc.code}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
             <Pressable
               style={({ pressed }) => [
                 styles.loginBtn,
-                { opacity: pressed || isLoading ? 0.75 : 1 },
+                { opacity: pressed || isLoading || phone.length < 7 ? 0.65 : 1 },
               ]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={isLoading || phone.length < 7}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFF" size="small" />
@@ -186,19 +248,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: Colors.light.onSurface,
     textAlign: "center",
     marginBottom: 6,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
     textAlign: "center",
     marginBottom: 20,
-    lineHeight: 20,
+    lineHeight: 19,
   },
   errorWrap: {
     flexDirection: "row",
@@ -216,7 +278,39 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     flex: 1,
   },
-  input: {
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  countryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: Colors.light.outline,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    minWidth: 90,
+  },
+  countryBtnActive: {
+    borderColor: Colors.light.primary,
+  },
+  flagText: {
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  codeText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.onSurface,
+    flex: 1,
+  },
+  phoneInput: {
+    flex: 1,
     backgroundColor: "#FFF",
     borderWidth: 1.5,
     borderColor: Colors.light.outline,
@@ -226,7 +320,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: Colors.light.onSurface,
+  },
+  pickerDropdown: {
+    backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: Colors.light.outline,
+    borderRadius: 14,
     marginBottom: 12,
+    maxHeight: 200,
+    overflow: "scroll" as any,
+  },
+  pickerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.outline,
+  },
+  pickerItemActive: {
+    backgroundColor: Colors.light.primaryContainer,
+  },
+  pickerLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.onSurface,
+  },
+  pickerCode: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
   },
   loginBtn: {
     backgroundColor: Colors.light.primary,
