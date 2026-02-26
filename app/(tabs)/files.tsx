@@ -550,15 +550,6 @@ export default function FilesTab() {
         <View style={[styles.batchActionBar, { bottom: tabBarHeight }]}>
           <Pressable
             style={({ pressed }) => [styles.batchBtn, { opacity: (pressed || isBatchProcessing || selectedIds.size === 0) ? 0.5 : 1 }]}
-            onPress={handleBatchUpload}
-            disabled={isBatchProcessing || selectedIds.size === 0}
-          >
-            <Ionicons name="cloud-upload-outline" size={22} color="#FFF" />
-            <Text style={styles.batchBtnText}>Upload</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.batchBtn, { opacity: (pressed || isBatchProcessing || selectedIds.size === 0) ? 0.5 : 1 }]}
             onPress={handleBatchShare}
             disabled={isBatchProcessing || selectedIds.size === 0}
           >
