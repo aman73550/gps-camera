@@ -55,6 +55,35 @@ server/
   routes.ts                # API routes
 ```
 
+## Performance & UX
+
+- **Instant Location**: Last-known GPS cached in AsyncStorage, restored instantly on every app launch — no waiting for "Fetching location..."
+- **Background Processing**: All image resize/crop/compress runs inside `InteractionManager.runAfterInteractions()` so camera shutter animations and haptics never stutter
+- **FadeThrough Transitions**: Both tabs fade in with Material 3 easing (`Easing.bezier(0.4, 0, 0.2, 1)`, 280ms) via `FadeInView` + `useFocusEffect`
+- **Container Transform**: Grid items scale to 0.94 on press-in (100ms), spring back on press-out (220ms) using reanimated v4 `useSharedValue`
+- **Photo Detail Transition**: Stack navigation uses `fade_from_bottom` at 300ms for a native container-transform feel
+
+## File Structure
+
+```
+app/
+  _layout.tsx              # Root layout; photo/[id] uses fade_from_bottom animation
+  (tabs)/
+    _layout.tsx            # Two-tab layout (Camera + Files)
+    index.tsx              # Camera tab screen; FadeInView + InteractionManager
+    files.tsx              # Files/gallery tab; FadeInView + animated grid items
+
+components/
+  FadeInView.tsx           # Reusable M3 fade component (useFocusEffect + reanimated)
+  QRCodeView.tsx           # QR code rendering component
+  PhotoOverlay.tsx         # GPS overlay for photos
+  ErrorBoundary.tsx        # Error boundary
+  ErrorFallback.tsx        # Error fallback UI
+
+lib/
+  location-cache.ts        # AsyncStorage cached location (instant Fast-Fix display)
+```
+
 ## Key Dependencies
 
 - expo-camera: Camera and QR scanning

@@ -21,7 +21,14 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="photo/[id]" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="photo/[id]"
+        options={{
+          headerShown: false,
+          animation: "fade_from_bottom",
+          animationDuration: 300,
+        }}
+      />
     </Stack>
   );
 }

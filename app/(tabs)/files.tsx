@@ -22,10 +22,19 @@ import * as Haptics from "expo-haptics";
 import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
 import { router } from "expo-router";
+import Animated, {
+  useSharedValue,
+  withTiming,
+  useAnimatedStyle,
+  Easing,
+} from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { PhotoRecord } from "@/lib/photo-storage";
 import { uploadPhotoBatch, GUEST_LIMIT_ERROR } from "@/lib/upload";
+import { FadeInView } from "@/components/FadeInView";
+
+const M3_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GRID_GAP = 2;
@@ -41,32 +50,38 @@ interface GridItemProps {
 }
 
 function PhotoGridItem({ item, isSelectMode, isSelected, onPress, onLongPress }: GridItemProps) {
+  const scale = useSharedValue(1);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.gridItem,
-        isSelected && styles.gridItemSelected,
-        { opacity: pressed ? 0.85 : 1 },
-      ]}
-      onPress={() => onPress(item)}
-      onLongPress={() => onLongPress(item)}
-      delayLongPress={350}
-      testID={`photo-${item.id}`}
-    >
-      <Image
-        source={{ uri: item.uri }}
-        style={styles.gridImage}
-        contentFit="cover"
-        transition={150}
-      />
-      {isSelectMode && (
-        <View style={[styles.selectionOverlay, isSelected && styles.selectionOverlayActive]}>
-          <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
-            {isSelected && <Ionicons name="checkmark" size={14} color="#FFF" />}
+    <Animated.View style={[styles.gridItem, isSelected && styles.gridItemSelected, animStyle]}>
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={() => onPress(item)}
+        onLongPress={() => onLongPress(item)}
+        onPressIn={() => { scale.value = withTiming(0.94, { duration: 100, easing: M3_EASING }); }}
+        onPressOut={() => { scale.value = withTiming(1, { duration: 220, easing: M3_EASING }); }}
+        delayLongPress={350}
+        testID={`photo-${item.id}`}
+      >
+        <Image
+          source={{ uri: item.uri }}
+          style={styles.gridImage}
+          contentFit="cover"
+          transition={150}
+        />
+        {isSelectMode && (
+          <View style={[styles.selectionOverlay, isSelected && styles.selectionOverlayActive]}>
+            <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
+              {isSelected && <Ionicons name="checkmark" size={14} color="#FFF" />}
+            </View>
           </View>
-        </View>
-      )}
-    </Pressable>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -292,7 +307,7 @@ export default function FilesTab() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
+    <FadeInView style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
 
       {isSelectMode ? (
         <View style={styles.selectHeader}>
@@ -428,7 +443,7 @@ export default function FilesTab() {
           </Pressable>
         </View>
       )}
-    </View>
+    </FadeInView>
   );
 }
 

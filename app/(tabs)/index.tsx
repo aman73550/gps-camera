@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  InteractionManager,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
@@ -20,6 +21,8 @@ import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
+import { FadeInView } from "@/components/FadeInView";
+import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
 import {
   generateSerialNumber,
   generateId,
@@ -64,6 +67,18 @@ export default function CameraTab() {
   }, [photos, lastCapturedUri]);
 
   useEffect(() => {
+    getCachedLocation().then((cached) => {
+      if (!cached) return;
+      setLatitude(cached.latitude);
+      setLongitude(cached.longitude);
+      setAltitude(cached.altitude);
+      setAddress(cached.address);
+      setLocationName(cached.locationName);
+      setPlusCode(cached.plusCode);
+    });
+  }, []);
+
+  useEffect(() => {
     if (Platform.OS === "web") {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
         const watchId = navigator.geolocation.watchPosition(
@@ -92,7 +107,8 @@ export default function CameraTab() {
       setLatitude(lat);
       setLongitude(lon);
       setAltitude(alt);
-      setPlusCode(computePlusCode(lat, lon));
+      const plus = computePlusCode(lat, lon);
+      setPlusCode(plus);
       try {
         const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
         if (reverseGeocode.length > 0) {
@@ -103,7 +119,7 @@ export default function CameraTab() {
             place.region,
             place.country,
           ].filter(Boolean);
-          setLocationName(nameParts.join(", ") || "Unknown Location");
+          const name = nameParts.join(", ") || "Unknown Location";
           const addrParts = [
             place.streetNumber,
             place.street,
@@ -112,10 +128,15 @@ export default function CameraTab() {
             place.postalCode,
             place.country,
           ].filter(Boolean);
-          setAddress(addrParts.join(", ") || "Unknown location");
+          const addr = addrParts.join(", ") || "Unknown location";
+          setLocationName(name);
+          setAddress(addr);
+          setCachedLocation({ latitude: lat, longitude: lon, altitude: alt, address: addr, locationName: name, plusCode: plus, timestamp: Date.now() });
         }
       } catch {
-        setAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+        const fallback = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        setAddress(fallback);
+        setCachedLocation({ latitude: lat, longitude: lon, altitude: alt, address: fallback, locationName: "GPS Location", plusCode: plus, timestamp: Date.now() });
       }
     };
 
@@ -170,50 +191,58 @@ export default function CameraTab() {
         return;
       }
 
-      const serialNumber = await generateSerialNumber();
-      const id = generateId();
-      const now = new Date();
+      await new Promise<void>((resolve, reject) => {
+        InteractionManager.runAfterInteractions(async () => {
+          try {
+            const serialNumber = await generateSerialNumber();
+            const id = generateId();
+            const now = new Date();
 
-      const resized = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [{ resize: { width: 1200 } }],
-        { format: ImageManipulator.SaveFormat.JPEG },
-      );
+            const resized = await ImageManipulator.manipulateAsync(
+              photo.uri,
+              [{ resize: { width: 1200 } }],
+              { format: ImageManipulator.SaveFormat.JPEG },
+            );
 
-      const targetHeight = Math.round(1200 * (4 / 3));
-      const cropActions =
-        resized.height > targetHeight
-          ? [{ crop: { originX: 0, originY: Math.round((resized.height - targetHeight) / 2), width: 1200, height: targetHeight } }]
-          : ([] as { crop: { originX: number; originY: number; width: number; height: number } }[]);
+            const targetHeight = Math.round(1200 * (4 / 3));
+            const cropActions =
+              resized.height > targetHeight
+                ? [{ crop: { originX: 0, originY: Math.round((resized.height - targetHeight) / 2), width: 1200, height: targetHeight } }]
+                : ([] as { crop: { originX: number; originY: number; width: number; height: number } }[]);
 
-      const compressed = await ImageManipulator.manipulateAsync(
-        resized.uri,
-        cropActions,
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
-      );
+            const compressed = await ImageManipulator.manipulateAsync(
+              resized.uri,
+              cropActions,
+              { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
+            );
 
-      const fileName = `${serialNumber}.jpg`;
-      const destUri = `${getPhotosDirectory()}${fileName}`;
-      await FileSystem.moveAsync({ from: compressed.uri, to: destUri });
+            const fileName = `${serialNumber}.jpg`;
+            const destUri = `${getPhotosDirectory()}${fileName}`;
+            await FileSystem.moveAsync({ from: compressed.uri, to: destUri });
 
-      const record: PhotoRecord = {
-        id,
-        serialNumber,
-        uri: destUri,
-        latitude,
-        longitude,
-        altitude,
-        address,
-        locationName,
-        plusCode,
-        timestamp: now.getTime(),
-        compressed: true,
-      };
+            const record: PhotoRecord = {
+              id,
+              serialNumber,
+              uri: destUri,
+              latitude,
+              longitude,
+              altitude,
+              address,
+              locationName,
+              plusCode,
+              timestamp: now.getTime(),
+              compressed: true,
+            };
 
-      await addPhoto(record);
-      setLastCapturedUri(destUri);
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await addPhoto(record);
+            setLastCapturedUri(destUri);
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        });
+      });
     } catch (err) {
       console.error("Capture error:", err);
       Alert.alert("Error", "Failed to capture photo. Please try again.");
@@ -323,7 +352,7 @@ export default function CameraTab() {
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <View style={[styles.container, { paddingTop: topInset }]}>
+    <FadeInView style={[styles.container, { paddingTop: topInset }]}>
       {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
       <View style={styles.previewWrapper}>
         <CameraView
@@ -421,7 +450,7 @@ export default function CameraTab() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </FadeInView>
   );
 }
 
