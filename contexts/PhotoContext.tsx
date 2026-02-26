@@ -8,6 +8,7 @@ import {
   useEffect,
 } from "react";
 import * as Network from "expo-network";
+import { getServerBase } from "@/lib/upload";
 import {
   PhotoRecord,
   getAllPhotos,
@@ -21,12 +22,19 @@ import {
   setPendingUpload as storageSetPendingUpload,
 } from "@/lib/photo-storage";
 
+export interface TierLimits {
+  guestLimit: number;
+  standardDailyLimit: number;
+  standardMonthlyLimit: number;
+}
+
 interface PhotoContextValue {
   photos: PhotoRecord[];
   trashPhotos: PhotoRecord[];
   isLoading: boolean;
   uploadCount: number;
   maxGuestUploads: number;
+  tierLimits: TierLimits;
   pendingCount: number;
   isOnline: boolean;
   refreshPhotos: () => Promise<void>;
@@ -43,13 +51,16 @@ interface PhotoContextValue {
 
 const PhotoContext = createContext<PhotoContextValue | null>(null);
 
+const DEFAULT_TIER_LIMITS: TierLimits = { guestLimit: 20, standardDailyLimit: 50, standardMonthlyLimit: 1000 };
+
 export function PhotoProvider({ children }: { children: ReactNode }) {
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [trashPhotos, setTrashPhotos] = useState<PhotoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadCount, setUploadCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
-  const maxGuestUploads = 20;
+  const [tierLimits, setTierLimits] = useState<TierLimits>(DEFAULT_TIER_LIMITS);
+  const maxGuestUploads = tierLimits.guestLimit;
 
   const pendingCount = useMemo(
     () => photos.filter((p) => !p.uploadedAt).length,
@@ -88,6 +99,21 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       setIsOnline(state.isConnected !== false && state.isInternetReachable !== false);
     });
     return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    fetch(`${getServerBase()}/api/config/limits`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && data.guestLimit) {
+          setTierLimits({
+            guestLimit: data.guestLimit,
+            standardDailyLimit: data.standardDailyLimit,
+            standardMonthlyLimit: data.standardMonthlyLimit,
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const addPhoto = useCallback(
@@ -171,6 +197,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       isLoading,
       uploadCount,
       maxGuestUploads,
+      tierLimits,
       pendingCount,
       isOnline,
       refreshPhotos,
@@ -190,6 +217,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       isLoading,
       uploadCount,
       maxGuestUploads,
+      tierLimits,
       pendingCount,
       isOnline,
       refreshPhotos,

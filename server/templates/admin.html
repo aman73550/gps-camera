@@ -474,6 +474,32 @@
       </div>
 
       <div class="settings-section">
+        <h3>📊 Upload Limits Per Tier</h3>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">
+          Control how many photos each tier can upload. Changes take effect immediately — no app restart needed.
+        </p>
+        <div class="form-row">
+          <label class="form-label">Guest Total Limit</label>
+          <input type="number" id="guest-limit" min="1" max="10000" style="width:100%;max-width:200px;padding:11px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">
+          <p class="form-hint">Total lifetime uploads for non-logged-in (guest) users.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Standard — Daily Limit</label>
+          <input type="number" id="standard-daily" min="1" max="100000" style="width:100%;max-width:200px;padding:11px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">
+          <p class="form-hint">Max uploads per day for Standard accounts.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Standard — Monthly Limit</label>
+          <input type="number" id="standard-monthly" min="1" max="1000000" style="width:100%;max-width:200px;padding:11px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">
+          <p class="form-hint">Max uploads per month for Standard accounts. Pro accounts are always unlimited.</p>
+        </div>
+        <div class="btn-row">
+          <button class="save-btn" onclick="saveLimitSettings()">Save Limit Settings</button>
+        </div>
+        <p id="limits-saved" class="success-msg">✓ Limit settings saved.</p>
+      </div>
+
+      <div class="settings-section">
         <h3>🧹 Manual Cleanup</h3>
         <p style="font-size:14px;color:#555;margin-bottom:16px;line-height:1.6">
           Trigger a cleanup run immediately. Only deletes records if auto-deletion is enabled and a period is set.
@@ -767,7 +793,25 @@ async function loadSettings() {
   document.getElementById('auto-delete-toggle').checked = !!s.auto_delete_enabled;
   document.getElementById('required-version').value = s.required_version || '1.0.0';
   document.getElementById('force-update-toggle').checked = !!s.force_update;
+  document.getElementById('guest-limit').value = s.guest_limit ?? 20;
+  document.getElementById('standard-daily').value = s.standard_daily_limit ?? 50;
+  document.getElementById('standard-monthly').value = s.standard_monthly_limit ?? 1000;
   updateToggleLabel(); updateForceLabel();
+}
+
+async function saveLimitSettings() {
+  const guestLimit = parseInt(document.getElementById('guest-limit').value) || 20;
+  const standardDailyLimit = parseInt(document.getElementById('standard-daily').value) || 50;
+  const standardMonthlyLimit = parseInt(document.getElementById('standard-monthly').value) || 1000;
+  const r = await api('/api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify({ guest_limit: guestLimit, standard_daily_limit: standardDailyLimit, standard_monthly_limit: standardMonthlyLimit })
+  });
+  if (r.ok) {
+    const msg = document.getElementById('limits-saved');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  }
 }
 
 function updateToggleLabel() {

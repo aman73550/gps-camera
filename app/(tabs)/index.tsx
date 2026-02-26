@@ -107,7 +107,7 @@ export default function CameraTab() {
   const [note, setNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
 
-  const { addPhoto, photos, uploadCount, maxGuestUploads } = usePhotos();
+  const { addPhoto, photos, uploadCount, maxGuestUploads, tierLimits } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -588,6 +588,8 @@ export default function CameraTab() {
           type={limitType}
           used={uploadCount}
           max={maxGuestUploads}
+          dailyLimit={tierLimits.standardDailyLimit}
+          monthlyLimit={tierLimits.standardMonthlyLimit}
           onLogin={() => {
             setShowLimitModal(false);
             setShowLoginModal(true);

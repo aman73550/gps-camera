@@ -103,7 +103,7 @@ export default function FilesTab() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = Platform.OS === "web" ? 84 : 49 + insets.bottom;
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
-    uploadCount, maxGuestUploads, removePhotos, isOnline, pendingCount } = usePhotos();
+    uploadCount, maxGuestUploads, tierLimits, removePhotos, isOnline, pendingCount } = usePhotos();
   const { isLoggedIn, user } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -214,6 +214,7 @@ export default function FilesTab() {
         (current, total, status) => setBatchStatus(`${current}/${total} — ${status}`),
         isLoggedIn,
         user?.phone,
+        maxGuestUploads,
       );
       exitSelectMode();
       await refreshPhotos();
@@ -566,6 +567,8 @@ export default function FilesTab() {
         type={limitType}
         used={uploadCount}
         max={maxGuestUploads}
+        dailyLimit={tierLimits.standardDailyLimit}
+        monthlyLimit={tierLimits.standardMonthlyLimit}
         onLogin={() => {
           setShowLimitModal(false);
           setShowLoginModal(true);

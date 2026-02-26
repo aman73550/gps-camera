@@ -68,7 +68,12 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all" ON public.app_settings;
 CREATE POLICY "anon_all" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);
 
+-- Upload limit columns (added later — safe to re-run)
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS guest_limit             INTEGER NOT NULL DEFAULT 20;
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS standard_daily_limit   INTEGER NOT NULL DEFAULT 50;
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS standard_monthly_limit INTEGER NOT NULL DEFAULT 1000;
+
 -- Seed default settings
-INSERT INTO public.app_settings (id, delete_after_months, auto_delete_enabled, required_version, force_update)
-VALUES (1, 0, FALSE, '1.0.0', FALSE)
+INSERT INTO public.app_settings (id, delete_after_months, auto_delete_enabled, required_version, force_update, guest_limit, standard_daily_limit, standard_monthly_limit)
+VALUES (1, 0, FALSE, '1.0.0', FALSE, 20, 50, 1000)
 ON CONFLICT (id) DO NOTHING;

@@ -16,11 +16,13 @@ interface Props {
   type: LimitType;
   used?: number;
   max?: number;
+  dailyLimit?: number;
+  monthlyLimit?: number;
   onLogin: () => void;
   onDismiss: () => void;
 }
 
-function getLimitContent(type: LimitType) {
+function getLimitContent(type: LimitType, dailyLimit = 50, monthlyLimit = 1000) {
   switch (type) {
     case "daily":
       return {
@@ -28,7 +30,7 @@ function getLimitContent(type: LimitType) {
         iconColor: "#007AFF",
         iconBg: "#E3F0FF",
         title: "Daily Limit Reached",
-        desc: "Standard accounts can upload 50 photos per day.\nSign in with a Pro account for unlimited daily uploads.",
+        desc: `Standard accounts can upload ${dailyLimit} photos per day.\nSign in with a Pro account for unlimited daily uploads.`,
         btnText: "Sign In / Upgrade to Pro",
         btnIcon: "star-outline" as const,
       };
@@ -38,7 +40,7 @@ function getLimitContent(type: LimitType) {
         iconColor: "#AF52DE",
         iconBg: "#F3E8FF",
         title: "Monthly Limit Reached",
-        desc: "Standard accounts can upload 1,000 photos per month.\nSign in with a Pro account for unlimited uploads.",
+        desc: `Standard accounts can upload ${monthlyLimit.toLocaleString()} photos per month.\nSign in with a Pro account for unlimited uploads.`,
         btnText: "Sign In / Upgrade to Pro",
         btnIcon: "star-outline" as const,
       };
@@ -55,8 +57,8 @@ function getLimitContent(type: LimitType) {
   }
 }
 
-export function GuestLimitModal({ visible, type, used, max, onLogin, onDismiss }: Props) {
-  const content = getLimitContent(type);
+export function GuestLimitModal({ visible, type, used, max, dailyLimit, monthlyLimit, onLogin, onDismiss }: Props) {
+  const content = getLimitContent(type, dailyLimit, monthlyLimit);
   const showProgress = type === "guest" && used !== undefined && max !== undefined;
 
   return (

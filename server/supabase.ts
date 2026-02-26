@@ -15,13 +15,10 @@ export interface AppSettings {
   required_version?: string;
   force_update?: boolean;
   updated_at?: string;
+  guest_limit?: number;
+  standard_daily_limit?: number;
+  standard_monthly_limit?: number;
 }
-
-export const TIER_LIMITS = {
-  guest: { total: 20 },
-  standard: { daily: 50, monthly: 1000 },
-  pro: null as null,
-};
 
 export async function getUserTier(
   phone: string,
@@ -41,12 +38,17 @@ export async function checkUploadLimit(
 ): Promise<{ allowed: boolean; reason?: string; tier?: string }> {
   if (!supabase) return { allowed: true };
 
+  const settings = await getAppSettings();
+  const guestLimit = settings.guest_limit ?? 20;
+  const dailyLimit = settings.standard_daily_limit ?? 50;
+  const monthlyLimit = settings.standard_monthly_limit ?? 1000;
+
   if (isGuest || !phone) {
     const { count } = await supabase
       .from("uploads")
       .select("*", { count: "exact", head: true })
       .is("user_phone", null);
-    if ((count || 0) >= TIER_LIMITS.guest.total) {
+    if ((count || 0) >= guestLimit) {
       return { allowed: false, reason: "GUEST_LIMIT", tier: "guest" };
     }
     return { allowed: true, tier: "guest" };
@@ -76,10 +78,10 @@ export async function checkUploadLimit(
       .gte("created_at", monthStart),
   ]);
 
-  if ((dailyCount || 0) >= TIER_LIMITS.standard.daily) {
+  if ((dailyCount || 0) >= dailyLimit) {
     return { allowed: false, reason: "DAILY_LIMIT", tier };
   }
-  if ((monthlyCount || 0) >= TIER_LIMITS.standard.monthly) {
+  if ((monthlyCount || 0) >= monthlyLimit) {
     return { allowed: false, reason: "MONTHLY_LIMIT", tier };
   }
   return { allowed: true, tier };

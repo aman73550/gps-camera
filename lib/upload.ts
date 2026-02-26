@@ -63,6 +63,7 @@ export async function compressForUpload(
 export async function runVerificationChain(
   photo: PhotoRecord,
   isLoggedIn = false,
+  guestLimit = MAX_GUEST_UPLOADS,
 ): Promise<void> {
   const photosDir = getPhotosDirectory();
   if (!photo.uri.startsWith(photosDir)) {
@@ -86,7 +87,7 @@ export async function runVerificationChain(
 
   if (!isLoggedIn) {
     const currentUploads = await getUploadCount();
-    if (currentUploads >= MAX_GUEST_UPLOADS) {
+    if (currentUploads >= guestLimit) {
       throw new Error(GUEST_LIMIT_ERROR);
     }
   }
@@ -97,9 +98,10 @@ export async function uploadPhoto(
   onProgress?: (status: string) => void,
   isLoggedIn = false,
   userPhone?: string | null,
+  guestLimit = MAX_GUEST_UPLOADS,
 ): Promise<void> {
   onProgress?.("Verifying…");
-  await runVerificationChain(photo, isLoggedIn);
+  await runVerificationChain(photo, isLoggedIn, guestLimit);
 
   onProgress?.("Compressing…");
   const compressed = await compressForUpload(photo.uri);
@@ -193,6 +195,7 @@ export async function uploadPhotoBatch(
   onProgress?: (current: number, total: number, status: string) => void,
   isLoggedIn = false,
   userPhone?: string | null,
+  guestLimit = MAX_GUEST_UPLOADS,
 ): Promise<{ succeeded: string[]; failed: { serial: string; error: string }[] }> {
   const succeeded: string[] = [];
   const failed: { serial: string; error: string }[] = [];
@@ -202,7 +205,7 @@ export async function uploadPhotoBatch(
     const photo = photos[i];
     try {
       onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Verifying…`);
-      await runVerificationChain(photo, isLoggedIn);
+      await runVerificationChain(photo, isLoggedIn, guestLimit);
 
       onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Compressing…`);
       const compressed = await compressForUpload(photo.uri);

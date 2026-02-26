@@ -282,6 +282,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.get("/api/config/limits", async (_req: Request, res: Response) => {
+    const settings = await getAppSettings();
+    res.json({
+      guestLimit: settings.guest_limit ?? 20,
+      standardDailyLimit: settings.standard_daily_limit ?? 50,
+      standardMonthlyLimit: settings.standard_monthly_limit ?? 1000,
+    });
+  });
+
   app.get("/admin", (_req: Request, res: Response) => {
     const adminPath = path.resolve(
       process.cwd(),
