@@ -17,6 +17,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as MediaLibrary from "expo-media-library";
@@ -101,6 +102,7 @@ function PhotoGridItem({ item, isSelectMode, isSelected, onPress, onLongPress }:
 
 export default function FilesTab() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
     uploadCount, maxGuestUploads, removePhotos, isOnline, pendingCount } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
@@ -508,8 +510,8 @@ export default function FilesTab() {
           contentContainerStyle={[
             styles.gridContent,
             { paddingBottom: isSelectMode
-                ? (Platform.OS === "web" ? 34 : insets.bottom) + 92
-                : (Platform.OS === "web" ? 34 : insets.bottom) + 84 },
+                ? tabBarHeight + 80
+                : tabBarHeight + 16 },
           ]}
           columnWrapperStyle={styles.gridRow}
           ListEmptyComponent={
@@ -546,7 +548,7 @@ export default function FilesTab() {
       )}
 
       {isSelectMode && (
-        <View style={[styles.batchActionBar, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8 }]}>
+        <View style={[styles.batchActionBar, { bottom: tabBarHeight }]}>
           <Pressable
             style={({ pressed }) => [styles.batchBtn, { opacity: (pressed || isBatchProcessing || selectedIds.size === 0) ? 0.5 : 1 }]}
             onPress={handleBatchUpload}
@@ -867,7 +869,6 @@ const styles = StyleSheet.create({
   emptyDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, textAlign: "center", lineHeight: 20 },
   batchActionBar: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: Colors.light.surface,
@@ -876,6 +877,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     paddingTop: 10,
+    paddingBottom: 10,
     paddingHorizontal: 8,
   },
   batchBtn: {
