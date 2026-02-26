@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "GPS Camera",
+    "name": "Verified GPS Camera",
     "slug": "gps-camera",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,8 +17,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.gpscamera",
       "infoPlist": {
-        "NSCameraUsageDescription": "GPS Camera needs camera access to take geo-tagged photos.",
-        "NSLocationWhenInUseUsageDescription": "GPS Camera needs location access to tag photos with GPS coordinates."
+        "NSCameraUsageDescription": "Verified GPS Camera needs camera access to take geo-tagged photos.",
+        "NSLocationWhenInUseUsageDescription": "Verified GPS Camera needs location access to tag photos with GPS coordinates."
       }
     },
     "android": {
@@ -50,14 +50,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "GPS Camera needs camera access to take geo-tagged photos.",
+          "cameraPermission": "Verified GPS Camera needs camera access to take geo-tagged photos.",
           "recordAudioPermission": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "GPS Camera needs location access to tag photos with GPS coordinates."
+          "locationWhenInUsePermission": "Verified GPS Camera needs location access to tag photos with GPS coordinates."
         }
       ]
     ],
