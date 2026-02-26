@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "rgba(15, 15, 15, 0.92)",
     paddingHorizontal: 11,
-    paddingVertical: 8,
+    paddingVertical: 5,
     alignItems: "center",
     gap: 11,
   },
