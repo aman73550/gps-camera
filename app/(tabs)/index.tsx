@@ -101,6 +101,7 @@ export default function CameraTab() {
   const [nearPlace, setNearPlace] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [frozenUri, setFrozenUri] = useState<string | null>(null);
+  const [overlaySerial, setOverlaySerial] = useState<string | null>(null);
   const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [flash, setFlash] = useState<"off" | "on" | "auto">("off");
@@ -274,12 +275,17 @@ export default function CameraTab() {
         return;
       }
 
-      // Step 2 — freeze the live preview with the exact captured frame
-      setFrozenUri(photo.uri);
-      // wait one frame for the frozen image to render over the camera
-      await new Promise((r) => setTimeout(r, 120));
+      // Step 2 — generate serial number NOW so it can be burned into the image
+      const serialNumber = await generateSerialNumber();
+      const id = generateId();
 
-      // Step 3 — screenshot the compositeRef (frozen frame + overlay, no UI controls)
+      // Step 3 — freeze the live preview with the exact captured frame and show real serial
+      setFrozenUri(photo.uri);
+      setOverlaySerial(serialNumber);
+      // wait for state to re-render with the real serial before capturing composite
+      await new Promise((r) => setTimeout(r, 160));
+
+      // Step 4 — screenshot the compositeRef (frozen frame + overlay with real serial burned in)
       let compositeUri: string = photo.uri;
       if (compositeRef.current && Platform.OS !== "web") {
         try {
@@ -293,14 +299,13 @@ export default function CameraTab() {
         }
       }
 
-      // Step 4 — unfreeze
+      // Step 5 — unfreeze and reset overlay serial
       setFrozenUri(null);
+      setOverlaySerial(null);
 
       await new Promise<void>((resolve, reject) => {
         InteractionManager.runAfterInteractions(async () => {
           try {
-            const serialNumber = await generateSerialNumber();
-            const id = generateId();
             const now = new Date();
 
             const useWebP = Platform.OS === "android";
@@ -572,9 +577,10 @@ export default function CameraTab() {
               nearPlace={nearPlace}
               note={note.trim() || undefined}
               serialNumber={
-                photos.length > 0
+                overlaySerial ??
+                (photos.length > 0
                   ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
-                  : "IMG-NEXT-001"
+                  : "IMG-NEXT-001")
               }
               timestamp={Date.now()}
             />

@@ -23,7 +23,6 @@ export interface PhotoRecord {
 }
 
 const PHOTOS_KEY = "@gps_camera_photos";
-const COUNTER_KEY = "@gps_camera_counter";
 const UPLOAD_COUNT_KEY = "@gps_camera_upload_count";
 
 export function getPhotosDirectory(): string {
@@ -41,11 +40,10 @@ export async function ensurePhotosDirectory(): Promise<void> {
 export async function generateSerialNumber(): Promise<string> {
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  const counterStr = await AsyncStorage.getItem(COUNTER_KEY);
-  let counter = counterStr ? parseInt(counterStr, 10) : 0;
-  counter += 1;
-  await AsyncStorage.setItem(COUNTER_KEY, counter.toString());
-  return `IMG-${dateStr}-${String(counter).padStart(3, "0")}`;
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+  const uuid = Crypto.randomUUID();
+  const randomSuffix = uuid.replace(/-/g, "").slice(0, 6).toUpperCase();
+  return `IMG-${dateStr}-${timeStr}-${randomSuffix}`;
 }
 
 export function computePlusCode(lat: number, lon: number): string {
