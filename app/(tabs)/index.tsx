@@ -21,6 +21,7 @@ import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
+import { router } from "expo-router";
 import { FadeInView } from "@/components/FadeInView";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
 import {
@@ -424,7 +425,19 @@ export default function CameraTab() {
       <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
         <View style={styles.controlsRow}>
           {/* Gallery thumbnail */}
-          <Pressable style={styles.galleryPreview}>
+          <Pressable
+            style={({ pressed }) => [styles.galleryPreview, { opacity: pressed ? 0.75 : 1 }]}
+            onPress={() => {
+              if (lastCapturedUri) {
+                const match = photos.find((p) => p.uri === lastCapturedUri);
+                if (match) {
+                  router.push(`/photo/${match.id}`);
+                  return;
+                }
+              }
+              router.push("/(tabs)/files");
+            }}
+          >
             {lastCapturedUri ? (
               <Image
                 source={{ uri: lastCapturedUri }}
