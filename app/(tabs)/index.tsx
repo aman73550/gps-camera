@@ -379,27 +379,16 @@ export default function CameraTab() {
           facing={facing}
         />
 
-        {/* Top overlay bar — GPS LIVE, count, flip */}
+        {/* Top overlay bar — GPS LIVE, count */}
         <View style={styles.topBar}>
           <View style={styles.gpsLiveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.gpsLiveText}>GPS LIVE</Text>
           </View>
-          <View style={styles.topRight}>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>
-                {photoCount} {photoCount === 1 ? "photo" : "photos"}
-              </Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.topButton,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-              onPress={toggleCamera}
-            >
-              <Ionicons name="camera-reverse-outline" size={22} color="#FFF" />
-            </Pressable>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>
+              {photoCount} {photoCount === 1 ? "photo" : "photos"}
+            </Text>
           </View>
         </View>
 
@@ -622,10 +611,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   controlPanel: {
-    flex: 1,
     backgroundColor: "#000",
     justifyContent: "center",
     alignItems: "center",
+    paddingTop: 20,
   },
   controlsRow: {
     flexDirection: "row",

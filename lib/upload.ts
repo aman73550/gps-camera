@@ -14,9 +14,13 @@ const MAX_GUEST_UPLOADS = 20;
 export const GUEST_LIMIT_ERROR = "GUEST_LIMIT_REACHED";
 
 function getServerBase(): string {
-  if (Platform.OS === "web") return "http://localhost:5000";
+  if (Platform.OS === "web") return "";
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  if (domain) return `http://${domain}`;
+  if (domain) {
+    // EXPO_PUBLIC_DOMAIN is "hostname:5000" — strip port, use HTTPS (Replit proxy)
+    const host = domain.split(":")[0];
+    return `https://${host}`;
+  }
   return "http://localhost:5000";
 }
 

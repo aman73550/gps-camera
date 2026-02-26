@@ -45,7 +45,7 @@ export function PhotoOverlay({
           <View style={styles.qrWrapper}>
             <QRCodeView
               value={serialNumber || "GPS-CAMERA"}
-              size={76}
+              size={90}
               backgroundColor="#1a1a1a"
               color="#FFFFFF"
             />
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   leftSection: {
-    width: 100,
+    width: 110,
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
@@ -142,30 +142,30 @@ const styles = StyleSheet.create({
   },
   locationTitle: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 13.5,
     fontFamily: "Inter_700Bold",
-    lineHeight: 16,
+    lineHeight: 17,
   },
   addressText: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 10,
+    color: "rgba(255,255,255,0.88)",
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
-    lineHeight: 13.5,
+    lineHeight: 14.5,
   },
   plusCodeText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 9.5,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 10.5,
     fontFamily: "Inter_500Medium",
     marginTop: 1,
   },
   nearText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 9.5,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 10.5,
     fontFamily: "Inter_500Medium",
   },
   dateText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 9.5,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 10.5,
     fontFamily: "Inter_400Regular",
   },
   bottomRow: {
@@ -180,8 +180,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   metaText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 9.5,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 10.5,
     fontFamily: "Inter_400Regular",
   },
   metaDot: {

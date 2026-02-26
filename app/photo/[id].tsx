@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { QRCodeView } from "@/components/QRCodeView";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { PhotoRecord } from "@/lib/photo-storage";
 import { uploadPhoto, GUEST_LIMIT_ERROR } from "@/lib/upload";
+import { captureRef } from "react-native-view-shot";
 
 function PhotoDetailOverlay({ photo }: { photo: PhotoRecord }) {
   return (
@@ -49,6 +50,7 @@ export default function PhotoDetailScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
 
+  const imageContainerRef = useRef<View>(null);
   const photo = photos.find((p) => p.id === id);
 
   if (!photo) {
@@ -82,13 +84,27 @@ export default function PhotoDetailScreen() {
     );
   };
 
+  const captureComposite = async (): Promise<string> => {
+    if (Platform.OS === "web") return photo.uri;
+    try {
+      const uri = await captureRef(imageContainerRef, {
+        format: "jpg",
+        quality: 0.92,
+      });
+      return uri;
+    } catch {
+      return photo.uri;
+    }
+  };
+
   const handleShare = async () => {
     try {
       if (Platform.OS === "web") { Alert.alert("Share", "Sharing is not supported on web."); return; }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(photo.uri, { mimeType: "image/jpeg", dialogTitle: photo.serialNumber });
+        const compositeUri = await captureComposite();
+        await Sharing.shareAsync(compositeUri, { mimeType: "image/jpeg", dialogTitle: photo.serialNumber });
       } else {
         Alert.alert("Share", "Sharing is not available on this device.");
       }
@@ -105,9 +121,10 @@ export default function PhotoDetailScreen() {
         Alert.alert("Permission Required", "Allow media library access to save photos to your device gallery.");
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(photo.uri);
+      const compositeUri = await captureComposite();
+      await MediaLibrary.saveToLibraryAsync(compositeUri);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Saved", "Photo saved to your device gallery.");
+      Alert.alert("Saved", "Photo with geo overlay saved to your device gallery.");
     } catch (err: unknown) {
       Alert.alert("Save Error", err instanceof Error ? err.message : "Could not save to gallery.");
     }
@@ -160,7 +177,7 @@ export default function PhotoDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.imageContainer}>
+          <View ref={imageContainerRef} style={styles.imageContainer}>
             <Image source={{ uri: photo.uri }} style={styles.mainImage} contentFit="cover" transition={300} />
             <PhotoDetailOverlay photo={photo} />
           </View>
