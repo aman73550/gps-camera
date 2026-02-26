@@ -57,7 +57,7 @@ export function PhotoOverlay({
 
         {/* Right: Geo details */}
         <View style={styles.rightSection}>
-          <Text style={styles.locationTitle} numberOfLines={1}>
+          <Text style={styles.locationTitle} numberOfLines={2}>
             {locationName || "Unknown Location"}
           </Text>
           <Text style={styles.addressText} numberOfLines={2}>
@@ -70,17 +70,17 @@ export function PhotoOverlay({
 
           <View style={styles.bottomRow}>
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="weather-sunny" size={10} color="rgba(255,255,255,0.7)" />
+              <MaterialCommunityIcons name="weather-sunny" size={12} color="rgba(255,255,255,0.75)" />
               <Text style={styles.metaText}>—</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="water-percent" size={10} color="rgba(255,255,255,0.7)" />
+              <MaterialCommunityIcons name="water-percent" size={12} color="rgba(255,255,255,0.75)" />
               <Text style={styles.metaText}>—</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="image-filter-hdr" size={10} color="rgba(255,255,255,0.7)" />
+              <MaterialCommunityIcons name="image-filter-hdr" size={12} color="rgba(255,255,255,0.75)" />
               <Text style={styles.metaText}>{altStr}</Text>
             </View>
           </View>
@@ -99,16 +99,16 @@ const styles = StyleSheet.create({
   overlayBox: {
     flexDirection: "row",
     backgroundColor: "rgba(15, 15, 15, 0.90)",
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   leftSection: {
-    width: 96,
+    width: 100,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 5,
   },
   qrWrapper: {
     padding: 4,
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   serialText: {
     color: "#FFFFFF",
-    fontSize: 6.5,
+    fontSize: 7.5,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.3,
     textAlign: "center",
@@ -125,57 +125,57 @@ const styles = StyleSheet.create({
   dividerLine: {
     width: 1,
     alignSelf: "stretch",
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     marginVertical: 1,
   },
   rightSection: {
     flex: 1,
     justifyContent: "center",
-    gap: 1.5,
+    gap: 2.5,
   },
   locationTitle: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
-    lineHeight: 13,
+    lineHeight: 16,
   },
   addressText: {
-    color: "rgba(255,255,255,0.82)",
-    fontSize: 8,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
-    lineHeight: 11,
+    lineHeight: 13.5,
   },
   plusCodeText: {
-    color: "rgba(255,255,255,0.72)",
-    fontSize: 7.5,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 9.5,
     fontFamily: "Inter_500Medium",
     marginTop: 1,
   },
   dateText: {
-    color: "rgba(255,255,255,0.72)",
-    fontSize: 7.5,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 9.5,
     fontFamily: "Inter_400Regular",
   },
   bottomRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 3,
-    gap: 4,
+    marginTop: 4,
+    gap: 6,
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    gap: 3,
   },
   metaText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 7.5,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 9.5,
     fontFamily: "Inter_400Regular",
   },
   metaDot: {
-    width: 2.5,
-    height: 2.5,
-    borderRadius: 1.25,
-    backgroundColor: "rgba(255,255,255,0.28)",
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(255,255,255,0.32)",
   },
 });
