@@ -22,7 +22,7 @@ import { usePhotos } from "@/contexts/PhotoContext";
 import { QRCodeView } from "@/components/QRCodeView";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhoto, GUEST_LIMIT_ERROR } from "@/lib/upload";
+import { uploadPhoto, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR } from "@/lib/upload";
 import { captureRef } from "react-native-view-shot";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -141,7 +141,7 @@ export default function PhotoDetailScreen() {
     setIsUploading(true);
     setUploadStatus("Verifying…");
     try {
-      await uploadPhoto(photo, (status) => setUploadStatus(status), isLoggedIn);
+      await uploadPhoto(photo, (status) => setUploadStatus(status), isLoggedIn, user?.phone);
       await refreshPhotos();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Upload Complete", `${photo.serialNumber} uploaded successfully.`);
@@ -149,8 +149,20 @@ export default function PhotoDetailScreen() {
       const msg = err instanceof Error ? err.message : "Upload failed.";
       if (msg === GUEST_LIMIT_ERROR) {
         Alert.alert(
-          "Upload Limit Reached",
-          "You have used all 20 guest uploads. Login to continue uploading without limits.",
+          "Guest Limit Reached",
+          "You have used all 20 guest uploads. Login to continue uploading.",
+          [{ text: "OK" }],
+        );
+      } else if (msg === DAILY_LIMIT_ERROR) {
+        Alert.alert(
+          "Daily Limit Reached",
+          "Standard accounts can upload 50 photos per day. Your limit resets at midnight.",
+          [{ text: "OK" }],
+        );
+      } else if (msg === MONTHLY_LIMIT_ERROR) {
+        Alert.alert(
+          "Monthly Limit Reached",
+          "Standard accounts can upload 1,000 photos per month. Upgrade to Pro for unlimited uploads.",
           [{ text: "OK" }],
         );
       } else if (msg.includes("Unauthorized") || msg.includes("Mismatch")) {

@@ -17,6 +17,10 @@ externalPort = 5000
 localPort = 8081
 externalPort = 80
 
+[[ports]]
+localPort = 8082
+externalPort = 3000
+
 [env]
 PORT = "5000"
 
@@ -68,3 +72,11 @@ task = "shell.exec"
 args = "npm run expo:dev"
 waitForPort = 8081
 ensurePreviewReachable = "/status"
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_URL = "https://ojlvkvlndniwtaxgvaxa.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_nZQiUtCFuJclMRxyW4SXmg_TWVM9w5A"
+EXPO_PUBLIC_SUPABASE_URL = "https://ojlvkvlndniwtaxgvaxa.supabase.co"
+EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_nZQiUtCFuJclMRxyW4SXmg_TWVM9w5A"

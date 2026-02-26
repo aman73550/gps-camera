@@ -7,6 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { syncUserProfile } from "@/lib/supabase";
 
 const AUTH_KEY = "auth_user";
 
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
     setUser(u);
     setLoginModalVisible(false);
+    syncUserProfile(phone.trim()).catch(() => {});
   }, []);
 
   const logout = useCallback(async () => {

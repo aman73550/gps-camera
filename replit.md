@@ -22,6 +22,10 @@ A professional GPS camera app built with Expo React Native that captures geo-tag
 - **Batch Operations**: Upload, Share, Save to DCIM gallery, and Delete multiple photos at once
 - **Sync Status**: Each photo shows a grey cloud (local only) or green cloud-done (uploaded) badge in the grid and detail view; status updates immediately after upload
 - **Infinite Scroll Pagination**: Files tab loads 20 photos initially and loads the next 20 as user scrolls to the bottom, with a footer showing current vs total count
+- **Supabase Integration**: PostgreSQL backend for upload tracking, user profiles, and tier-based upload limits
+- **Dynamic Tiers**: Guest (20 total), Standard (50/day, 1000/month), Pro (unlimited) — enforced server-side via Supabase
+- **Admin Panel**: Web UI at `/admin` with dashboard stats, 7-day chart, user tier management (upgrade/downgrade), paginated uploads table, and retention policy settings
+- **Auto-Delete Cleanup**: Server-side nightly cron at 2am that deletes uploads exceeding the configured retention period (3/6/12 months) when enabled in the admin panel
 
 ## File Structure
 

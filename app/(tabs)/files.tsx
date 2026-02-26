@@ -32,7 +32,7 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhotoBatch, GUEST_LIMIT_ERROR } from "@/lib/upload";
+import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
 import { LoginModal } from "@/components/LoginModal";
 import { GuestLimitModal } from "@/components/GuestLimitModal";
@@ -205,12 +205,19 @@ export default function FilesTab() {
         selectedPhotos,
         (current, total, status) => setBatchStatus(`${current}/${total} — ${status}`),
         isLoggedIn,
+        user?.phone,
       );
       exitSelectMode();
       await refreshPhotos();
       const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
+      const dailyLimitHit = failed.some((f) => f.error === DAILY_LIMIT_ERROR);
+      const monthlyLimitHit = failed.some((f) => f.error === MONTHLY_LIMIT_ERROR);
       if (guestLimitHit) {
         setShowGuestLimitModal(true);
+      } else if (dailyLimitHit) {
+        Alert.alert("Daily Limit Reached", `Uploaded ${succeeded.length} photo(s). Standard accounts allow 50 uploads per day. Limit resets at midnight.`);
+      } else if (monthlyLimitHit) {
+        Alert.alert("Monthly Limit Reached", `Uploaded ${succeeded.length} photo(s). Standard accounts allow 1,000 uploads per month. Upgrade to Pro for unlimited.`);
       } else if (failed.length === 0) {
         Alert.alert("Upload Complete", `${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded successfully.`);
       } else {

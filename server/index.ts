@@ -1,6 +1,7 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { checkSupabaseConnection, runAutoCleanup } from "./supabase";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -40,7 +41,10 @@ function setupCors(app: express.Application) {
         "Access-Control-Allow-Methods",
         "GET, POST, PUT, DELETE, OPTIONS",
       );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Content-Type, X-User-Phone, X-Is-Guest, X-Admin-Token",
+      );
       res.header("Access-Control-Allow-Credentials", "true");
     }
 
@@ -235,6 +239,20 @@ function setupErrorHandler(app: express.Application) {
   const server = await registerRoutes(app);
 
   setupErrorHandler(app);
+
+  await checkSupabaseConnection();
+
+  const msUntil2am = (() => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 2, 0, 0);
+    return next.getTime() - now.getTime();
+  })();
+  setTimeout(function scheduleNightlyCleanup() {
+    runAutoCleanup().then((n) => {
+      if (n > 0) console.log(`Nightly auto-cleanup: deleted ${n} old upload(s)`);
+    });
+    setTimeout(scheduleNightlyCleanup, 24 * 60 * 60 * 1000);
+  }, msUntil2am);
 
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(

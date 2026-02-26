@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPS Camera — Admin Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1565C0; --primary-light: #1E88E5; --primary-container: #BBDEFB;
+    --on-primary: #fff; --surface: #fff; --surface-variant: #F4F6F8;
+    --on-surface: #1C1B1F; --outline: #E0E4EA; --success: #188038;
+    --error: #B00020; --warning: #E65100; --pro-color: #7B1FA2;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F0F4F8; color: var(--on-surface); min-height: 100vh; }
+
+  /* Auth overlay */
+  #auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .auth-card { background: var(--surface); border-radius: 16px; padding: 32px;
+    width: 100%; max-width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,.12); }
+  .auth-card h2 { font-size: 22px; font-weight: 700; color: var(--primary);
+    margin-bottom: 8px; }
+  .auth-card p { font-size: 13px; color: #666; margin-bottom: 24px; }
+  .auth-input { width: 100%; border: 1.5px solid var(--outline); border-radius: 10px;
+    padding: 12px 14px; font-size: 15px; outline: none; transition: border .2s; }
+  .auth-input:focus { border-color: var(--primary); }
+  .auth-btn { width: 100%; background: var(--primary); color: #fff; border: none;
+    border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 12px; transition: opacity .15s; }
+  .auth-btn:hover { opacity: .88; }
+  .auth-error { color: var(--error); font-size: 13px; margin-top: 8px; display: none; }
+
+  /* Layout */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--outline);
+    padding: 24px 0; flex-shrink: 0; display: flex; flex-direction: column; position: sticky;
+    top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-brand { padding: 0 20px 20px; border-bottom: 1px solid var(--outline); margin-bottom: 8px; }
+  .sidebar-brand h1 { font-size: 17px; font-weight: 700; color: var(--primary); line-height: 1.3; }
+  .sidebar-brand span { font-size: 11px; color: #888; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px;
+    cursor: pointer; border-radius: 0 24px 24px 0; margin-right: 12px;
+    color: #555; font-size: 14px; font-weight: 500; transition: all .15s; user-select: none; }
+  .nav-item:hover { background: var(--surface-variant); color: var(--primary); }
+  .nav-item.active { background: var(--primary-container); color: var(--primary); font-weight: 600; }
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+  .main { flex: 1; padding: 28px 32px; overflow-y: auto; min-width: 0; }
+
+  /* Page sections */
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 24px; font-weight: 700; color: var(--on-surface);
+    margin-bottom: 24px; }
+
+  /* Stats cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border-radius: 16px; padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .stat-label { font-size: 12px; color: #888; font-weight: 500; text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 8px; }
+  .stat-value { font-size: 32px; font-weight: 700; color: var(--primary); line-height: 1; }
+  .stat-sub { font-size: 12px; color: #888; margin-top: 4px; }
+
+  /* Chart */
+  .chart-card { background: var(--surface); border-radius: 16px; padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 28px; }
+  .chart-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: #444; }
+  .chart-wrap { height: 200px; position: relative; }
+
+  /* Tables */
+  .table-card { background: var(--surface); border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; margin-bottom: 24px; }
+  .table-header { padding: 18px 20px; border-bottom: 1px solid var(--outline);
+    display: flex; align-items: center; justify-content: space-between; }
+  .table-header h3 { font-size: 16px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 600;
+    color: #888; text-transform: uppercase; letter-spacing: .4px;
+    background: var(--surface-variant); border-bottom: 1px solid var(--outline); }
+  td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid var(--outline); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #FAFBFC; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+    border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-standard { background: var(--primary-container); color: var(--primary); }
+  .badge-pro { background: #EDE7F6; color: var(--pro-color); }
+  .badge-guest { background: #FFF3E0; color: var(--warning); }
+  .tier-btn { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid; cursor: pointer; transition: all .15s; background: transparent; }
+  .tier-btn-upgrade { border-color: var(--pro-color); color: var(--pro-color); }
+  .tier-btn-upgrade:hover { background: #EDE7F6; }
+  .tier-btn-downgrade { border-color: #999; color: #666; }
+  .tier-btn-downgrade:hover { background: #F5F5F5; }
+
+  /* Pagination */
+  .pagination { display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-top: 1px solid var(--outline); font-size: 13px; color: #666; }
+  .pag-btns { display: flex; gap: 6px; }
+  .pag-btn { padding: 6px 14px; border: 1.5px solid var(--outline); border-radius: 8px;
+    background: none; cursor: pointer; font-size: 13px; transition: all .15s; }
+  .pag-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .pag-btn:disabled { opacity: .4; cursor: default; }
+
+  /* Settings */
+  .settings-section { background: var(--surface); border-radius: 16px; padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 20px; }
+  .settings-section h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--outline); }
+  .form-row { margin-bottom: 18px; }
+  .form-label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px;
+    display: block; }
+  .form-hint { font-size: 12px; color: #888; margin-top: 4px; }
+  select, .form-select { width: 100%; max-width: 300px; padding: 10px 14px;
+    border: 1.5px solid var(--outline); border-radius: 10px; font-size: 14px;
+    outline: none; background: #fff; }
+  select:focus { border-color: var(--primary); }
+  .toggle-row { display: flex; align-items: center; gap: 12px; }
+  .toggle { position: relative; width: 44px; height: 24px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: #CCC; border-radius: 24px;
+    transition: .25s; }
+  .toggle-slider::before { content: ""; position: absolute; width: 18px; height: 18px;
+    left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .25s; }
+  .toggle input:checked + .toggle-slider { background: var(--primary); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+  .save-btn { padding: 10px 24px; background: var(--primary); color: #fff; border: none;
+    border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: opacity .15s; margin-top: 4px; }
+  .save-btn:hover { opacity: .88; }
+  .danger-btn { padding: 10px 24px; background: #fff; color: var(--error);
+    border: 1.5px solid var(--error); border-radius: 10px; font-size: 14px;
+    font-weight: 600; cursor: pointer; transition: all .15s; }
+  .danger-btn:hover { background: #FFEBEE; }
+  .success-msg { color: var(--success); font-size: 13px; margin-top: 8px;
+    font-weight: 500; display: none; }
+
+  /* Status */
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .status-online { background: var(--success); }
+  .status-offline { background: #CCC; }
+  .supabase-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+    border-radius: 20px; font-size: 12px; margin-left: auto; }
+  .supabase-badge.connected { background: #E8F5E9; color: var(--success); }
+  .supabase-badge.disconnected { background: #FFF3E0; color: var(--warning); }
+
+  /* Limit tiers info */
+  .tiers-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .tier-card { border-radius: 12px; padding: 16px; border: 1.5px solid var(--outline); }
+  .tier-card.guest { border-color: #FFB74D; }
+  .tier-card.standard { border-color: var(--primary-light); }
+  .tier-card.pro { border-color: var(--pro-color); }
+  .tier-name { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .tier-limits { font-size: 12px; color: #555; line-height: 1.8; }
+
+  /* Loading spinner */
+  .loader { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--outline);
+    border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-row td { text-align: center; color: #888; padding: 32px; }
+  .empty-row td { text-align: center; color: #AAA; padding: 32px; font-size: 13px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .tiers-info { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Auth overlay (shown when ADMIN_SECRET is set) -->
+<div id="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <h2>🔐 Admin Login</h2>
+    <p>Enter your admin token to continue.</p>
+    <input id="token-input" class="auth-input" type="password" placeholder="Admin token" />
+    <button class="auth-btn" onclick="submitToken()">Login</button>
+    <p id="auth-error" class="auth-error">Incorrect token. Try again.</p>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <h1>GPS Camera</h1>
+      <span>Admin Panel</span>
+    </div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('users')">
+      <span class="nav-icon">👥</span> Users
+    </div>
+    <div class="nav-item" onclick="showPage('uploads')">
+      <span class="nav-icon">📸</span> Uploads
+    </div>
+    <div class="nav-item" onclick="showPage('settings')">
+      <span class="nav-icon">⚙️</span> Settings
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div style="display:flex;align-items:center;margin-bottom:24px">
+        <h2 class="page-title" style="margin:0">Dashboard</h2>
+        <span id="supabase-badge" class="supabase-badge disconnected" style="margin-left:16px">
+          <span class="status-dot status-offline"></span> Checking…
+        </span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Uploads</div>
+          <div class="stat-value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Registered Users</div>
+          <div class="stat-value" id="stat-users">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Today's Uploads</div>
+          <div class="stat-value" id="stat-today">—</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Uploads — Last 7 Days</h3>
+        <div class="chart-wrap">
+          <canvas id="uploads-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="tiers-info">
+        <div class="tier-card guest">
+          <div class="tier-name" style="color:#E65100">🚶 Guest</div>
+          <div class="tier-limits">Max 20 uploads total<br>No account required</div>
+        </div>
+        <div class="tier-card standard">
+          <div class="tier-name" style="color:var(--primary)">👤 Standard</div>
+          <div class="tier-limits">50 uploads / day<br>1,000 uploads / month</div>
+        </div>
+        <div class="tier-card pro">
+          <div class="tier-name" style="color:var(--pro-color)">⭐ Pro</div>
+          <div class="tier-limits">Unlimited uploads<br>Priority support</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div id="page-users" class="page">
+      <h2 class="page-title">Users</h2>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Registered Accounts</h3>
+          <span id="users-count" style="font-size:13px;color:#888"></span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Phone</th>
+              <th>Tier</th>
+              <th>Joined</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr class="loading-row"><td colspan="4"><span class="loader"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- UPLOADS -->
+    <div id="page-uploads" class="page">
+      <h2 class="page-title">Uploads</h2>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>All Photo Uploads</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Serial</th>
+              <th>User</th>
+              <th>Location</th>
+              <th>Size</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="uploads-tbody">
+            <tr class="loading-row"><td colspan="5"><span class="loader"></span></td></tr>
+          </tbody>
+        </table>
+        <div class="pagination">
+          <span id="uploads-info">—</span>
+          <div class="pag-btns">
+            <button class="pag-btn" id="btn-prev" onclick="changePage(-1)" disabled>← Prev</button>
+            <button class="pag-btn" id="btn-next" onclick="changePage(1)">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page">
+      <h2 class="page-title">Settings</h2>
+
+      <div class="settings-section">
+        <h3>🗑️ Retention Policy</h3>
+        <div class="form-row">
+          <label class="form-label">Auto-delete uploads older than</label>
+          <select id="retention-period">
+            <option value="0">Never delete</option>
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12">1 year</option>
+          </select>
+          <p class="form-hint">When enabled, photos older than this period are automatically removed from both the database and the server.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Enable auto-deletion</label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="auto-delete-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+            <span id="toggle-label" style="font-size:13px;color:#666">Disabled</span>
+          </div>
+        </div>
+        <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+        <p id="settings-saved" class="success-msg">✓ Settings saved.</p>
+      </div>
+
+      <div class="settings-section">
+        <h3>🧹 Manual Cleanup</h3>
+        <p style="font-size:14px;color:#555;margin-bottom:16px">
+          Trigger a cleanup run immediately based on the current retention policy.
+          Only deletes records if auto-deletion is enabled and a period is set.
+        </p>
+        <button class="danger-btn" onclick="runCleanup()">Run Cleanup Now</button>
+        <p id="cleanup-result" class="success-msg"></p>
+      </div>
+
+      <div class="settings-section">
+        <h3>🔐 Admin Panel Security</h3>
+        <p style="font-size:14px;color:#555;line-height:1.7">
+          To protect this admin panel with a password, set the <code style="background:#F4F6F8;padding:2px 6px;border-radius:4px">ADMIN_SECRET</code>
+          environment variable in your Replit Secrets panel.<br><br>
+          All API requests will then require the <code style="background:#F4F6F8;padding:2px 6px;border-radius:4px">X-Admin-Token</code> header or
+          a <code style="background:#F4F6F8;padding:2px 6px;border-radius:4px">?token=</code> query parameter.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+let adminToken = localStorage.getItem('admin_token') || '';
+let uploadsPage = 1;
+let uploadsTotalPages = 1;
+let chartInstance = null;
+
+function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  if (adminToken) headers['X-Admin-Token'] = adminToken;
+  return fetch(path, { ...opts, headers });
+}
+
+async function submitToken() {
+  const val = document.getElementById('token-input').value.trim();
+  adminToken = val;
+  const r = await api('/api/admin/stats');
+  if (r.status === 401) {
+    document.getElementById('auth-error').style.display = 'block';
+    return;
+  }
+  localStorage.setItem('admin_token', val);
+  document.getElementById('auth-overlay').style.display = 'none';
+  initApp();
+}
+
+async function checkAuth() {
+  const r = await api('/api/admin/stats');
+  if (r.status === 401) {
+    document.getElementById('auth-overlay').style.display = 'flex';
+    return false;
+  }
+  return r;
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.toLowerCase().includes(name === 'dashboard' ? 'dashboard' : name))
+      n.classList.add('active');
+  });
+  if (name === 'users') loadUsers();
+  if (name === 'uploads') { uploadsPage = 1; loadUploads(); }
+  if (name === 'settings') loadSettings();
+}
+
+async function loadDashboard() {
+  const r = await api('/api/admin/stats');
+  if (!r.ok) return;
+  const d = await r.json();
+
+  document.getElementById('stat-total').textContent = d.totalUploads.toLocaleString();
+  document.getElementById('stat-users').textContent = d.totalUsers.toLocaleString();
+  document.getElementById('stat-today').textContent = d.todayUploads.toLocaleString();
+
+  const badge = document.getElementById('supabase-badge');
+  if (d.supabaseConnected) {
+    badge.className = 'supabase-badge connected';
+    badge.innerHTML = '<span class="status-dot status-online"></span> Supabase connected';
+  } else {
+    badge.className = 'supabase-badge disconnected';
+    badge.innerHTML = '<span class="status-dot status-offline"></span> Supabase not connected';
+  }
+
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('uploads-chart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: d.dailyChart.labels,
+      datasets: [{
+        label: 'Uploads',
+        data: d.dailyChart.data,
+        backgroundColor: 'rgba(21,101,192,0.18)',
+        borderColor: '#1565C0',
+        borderWidth: 2,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#F0F0F0' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+async function loadUsers() {
+  document.getElementById('users-tbody').innerHTML =
+    '<tr class="loading-row"><td colspan="4"><span class="loader"></span></td></tr>';
+  const r = await api('/api/admin/users');
+  if (!r.ok) return;
+  const { data } = await r.json();
+  document.getElementById('users-count').textContent = `${data.length} user(s)`;
+  if (!data.length) {
+    document.getElementById('users-tbody').innerHTML =
+      '<tr class="empty-row"><td colspan="4">No registered users yet</td></tr>';
+    return;
+  }
+  document.getElementById('users-tbody').innerHTML = data.map(u => `
+    <tr>
+      <td style="font-family:monospace">${u.phone}</td>
+      <td><span class="badge badge-${u.tier}">${u.tier === 'pro' ? '⭐ Pro' : '👤 Standard'}</span></td>
+      <td>${new Date(u.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}</td>
+      <td>${u.tier === 'standard'
+        ? `<button class="tier-btn tier-btn-upgrade" onclick="setTier('${encodeURIComponent(u.phone)}','pro',this)">Upgrade to Pro</button>`
+        : `<button class="tier-btn tier-btn-downgrade" onclick="setTier('${encodeURIComponent(u.phone)}','standard',this)">Downgrade</button>`
+      }</td>
+    </tr>
+  `).join('');
+}
+
+async function setTier(phone, tier, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  const r = await api(`/api/admin/users/${phone}/tier`, {
+    method: 'POST', body: JSON.stringify({ tier })
+  });
+  if (r.ok) loadUsers();
+  else { btn.disabled = false; btn.textContent = 'Error'; }
+}
+
+async function loadUploads() {
+  document.getElementById('uploads-tbody').innerHTML =
+    '<tr class="loading-row"><td colspan="5"><span class="loader"></span></td></tr>';
+  const r = await api(`/api/admin/uploads?page=${uploadsPage}&limit=20`);
+  if (!r.ok) return;
+  const { data, total, page, limit } = await r.json();
+  uploadsTotalPages = Math.ceil(total / limit) || 1;
+  const start = (page - 1) * limit + 1;
+  const end = Math.min(page * limit, total);
+  document.getElementById('uploads-info').textContent =
+    total ? `Showing ${start}–${end} of ${total}` : '0 uploads';
+  document.getElementById('btn-prev').disabled = page <= 1;
+  document.getElementById('btn-next').disabled = page >= uploadsTotalPages;
+
+  if (!data.length) {
+    document.getElementById('uploads-tbody').innerHTML =
+      '<tr class="empty-row"><td colspan="5">No uploads yet</td></tr>';
+    return;
+  }
+  document.getElementById('uploads-tbody').innerHTML = data.map(u => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px">${u.serial_number}</td>
+      <td>${u.is_guest
+        ? '<span class="badge badge-guest">Guest</span>'
+        : `<span style="font-size:12px;font-family:monospace">${u.user_phone || '—'}</span>`
+      }</td>
+      <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+        title="${u.address}">${u.address || '—'}</td>
+      <td>${u.file_size_kb} KB</td>
+      <td style="font-size:12px">${new Date(u.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+    </tr>
+  `).join('');
+}
+
+function changePage(dir) {
+  uploadsPage = Math.max(1, Math.min(uploadsTotalPages, uploadsPage + dir));
+  loadUploads();
+}
+
+async function loadSettings() {
+  const r = await api('/api/admin/settings');
+  if (!r.ok) return;
+  const s = await r.json();
+  document.getElementById('retention-period').value = s.delete_after_months || 0;
+  document.getElementById('auto-delete-toggle').checked = !!s.auto_delete_enabled;
+  updateToggleLabel();
+}
+
+function updateToggleLabel() {
+  const on = document.getElementById('auto-delete-toggle').checked;
+  document.getElementById('toggle-label').textContent = on ? 'Enabled' : 'Disabled';
+}
+document.getElementById('auto-delete-toggle').addEventListener('change', updateToggleLabel);
+
+async function saveSettings() {
+  const period = parseInt(document.getElementById('retention-period').value);
+  const enabled = document.getElementById('auto-delete-toggle').checked;
+  const r = await api('/api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify({ delete_after_months: period, auto_delete_enabled: enabled })
+  });
+  if (r.ok) {
+    const msg = document.getElementById('settings-saved');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  }
+}
+
+async function runCleanup() {
+  const r = await api('/api/admin/cleanup', { method: 'POST' });
+  if (!r.ok) return;
+  const { deleted } = await r.json();
+  const msg = document.getElementById('cleanup-result');
+  msg.textContent = deleted > 0
+    ? `✓ Deleted ${deleted} old upload(s).`
+    : '✓ Nothing to clean up (check retention policy is enabled and period is set).';
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 5000);
+  if (deleted > 0) loadDashboard();
+}
+
+async function initApp() {
+  loadDashboard();
+}
+
+(async () => {
+  const r = await checkAuth();
+  if (r) initApp();
+})();
+</script>
+</body>
+</html>
