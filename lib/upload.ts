@@ -5,10 +5,13 @@ import {
   getUploadCount,
   incrementUploadCount,
   markPhotoAsUploaded,
+  setPendingUpload,
   getPhotosDirectory,
   PhotoRecord,
 } from "./photo-storage";
 import { Platform } from "react-native";
+
+export const NETWORK_ERROR = "NETWORK_OFFLINE";
 
 const MAX_GUEST_UPLOADS = 20;
 
@@ -105,11 +108,17 @@ export async function uploadPhoto(
     headers["X-Is-Guest"] = "true";
   }
 
-  const response = await fetch(`${getServerBase()}/api/upload`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getServerBase()}/api/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+  } catch {
+    await setPendingUpload(photo.id, true);
+    throw new Error(NETWORK_ERROR);
+  }
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({ error: response.statusText }));
@@ -120,6 +129,7 @@ export async function uploadPhoto(
     throw new Error(`Upload failed: ${JSON.stringify(data)}`);
   }
 
+  await setPendingUpload(photo.id, false);
   await incrementUploadCount();
   await markPhotoAsUploaded(photo.id);
   onProgress?.("Done");

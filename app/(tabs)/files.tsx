@@ -32,7 +32,7 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR } from "@/lib/upload";
+import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
 import { LoginModal } from "@/components/LoginModal";
 import { GuestLimitModal } from "@/components/GuestLimitModal";
@@ -100,7 +100,7 @@ function PhotoGridItem({ item, isSelectMode, isSelected, onPress, onLongPress }:
 export default function FilesTab() {
   const insets = useSafeAreaInsets();
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
-    uploadCount, maxGuestUploads, removePhotos } = usePhotos();
+    uploadCount, maxGuestUploads, removePhotos, isOnline, pendingCount } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -198,6 +198,10 @@ export default function FilesTab() {
 
   const handleBatchUpload = useCallback(async () => {
     if (selectedPhotos.length === 0) return;
+    if (!isOnline) {
+      Alert.alert("Offline", "You're currently offline. Photos will be queued and uploaded when you reconnect.");
+      return;
+    }
     setIsBatchProcessing(true);
     setBatchStatus("Preparing upload…");
     try {
@@ -209,10 +213,13 @@ export default function FilesTab() {
       );
       exitSelectMode();
       await refreshPhotos();
+      const networkHit = failed.some((f) => f.error === NETWORK_ERROR);
       const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
       const dailyLimitHit = failed.some((f) => f.error === DAILY_LIMIT_ERROR);
       const monthlyLimitHit = failed.some((f) => f.error === MONTHLY_LIMIT_ERROR);
-      if (guestLimitHit) {
+      if (networkHit) {
+        Alert.alert("Offline", `${succeeded.length > 0 ? `${succeeded.length} uploaded. ` : ""}${failed.filter(f => f.error === NETWORK_ERROR).length} photo(s) queued for when you reconnect.`);
+      } else if (guestLimitHit) {
         setShowGuestLimitModal(true);
       } else if (dailyLimitHit) {
         Alert.alert("Daily Limit Reached", `Uploaded ${succeeded.length} photo(s). Standard accounts allow 50 uploads per day. Limit resets at midnight.`);
@@ -229,7 +236,7 @@ export default function FilesTab() {
       setIsBatchProcessing(false);
       setBatchStatus("");
     }
-  }, [selectedPhotos, exitSelectMode, isLoggedIn]);
+  }, [selectedPhotos, exitSelectMode, isLoggedIn, isOnline]);
 
   const handleBatchShare = useCallback(async () => {
     if (selectedPhotos.length === 0) return;
@@ -422,6 +429,15 @@ export default function FilesTab() {
         </View>
       )}
 
+      {!isOnline && (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline-outline" size={15} color="#FF9500" />
+          <Text style={styles.offlineBannerText}>
+            Offline — {pendingCount} photo{pendingCount !== 1 ? "s" : ""} pending upload
+          </Text>
+        </View>
+      )}
+
       {isBatchProcessing && (
         <View style={styles.batchProgressBar}>
           <ActivityIndicator size="small" color={Colors.light.primary} />
@@ -571,6 +587,22 @@ const cornerBorder = 3;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,149,0,0.1)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,149,0,0.3)",
+  },
+  offlineBannerText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#FF9500",
+    flex: 1,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -32,3 +32,17 @@ export async function getUserTier(
     return "standard";
   }
 }
+
+export async function checkRequiredVersion(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("required_version")
+      .eq("id", 1)
+      .single();
+    return (data as { required_version?: string } | null)?.required_version ?? null;
+  } catch {
+    return null;
+  }
+}

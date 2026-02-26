@@ -9,6 +9,8 @@ import {
   Alert,
   Linking,
   InteractionManager,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
@@ -60,6 +62,8 @@ export default function CameraTab() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
+  const [note, setNote] = useState("");
+  const [showNoteInput, setShowNoteInput] = useState(false);
 
   const { addPhoto, photos, uploadCount, maxGuestUploads } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
@@ -199,13 +203,15 @@ export default function CameraTab() {
     setIsCapturing(true);
 
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await ensurePhotosDirectory();
 
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        skipProcessing: false,
-      });
+      const [, photo] = await Promise.all([
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
+        cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: false,
+        }),
+      ]);
 
       if (!photo) {
         setIsCapturing(false);
@@ -252,6 +258,7 @@ export default function CameraTab() {
               locationName,
               plusCode,
               nearPlace,
+              note: note.trim() || undefined,
               timestamp: now.getTime(),
               compressed: true,
             };
@@ -271,7 +278,7 @@ export default function CameraTab() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, nearPlace, addPhoto]);
+  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, nearPlace, note, addPhoto]);
 
   const toggleCamera = useCallback(() => {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
@@ -374,147 +381,199 @@ export default function CameraTab() {
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <FadeInView style={[styles.container, { paddingTop: topInset }]}>
-      {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
-      <View style={styles.previewWrapper}>
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing={facing}
-        />
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#000" }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <FadeInView style={[styles.container, { paddingTop: topInset }]}>
+        {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
+        <View style={styles.previewWrapper}>
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing={facing}
+          />
 
-        {/* Top overlay bar — GPS LIVE, count, auth */}
-        <View style={styles.topBar}>
-          <View style={styles.gpsLiveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.gpsLiveText}>GPS LIVE</Text>
-          </View>
-          <View style={styles.topRight}>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>
-                {photoCount} {photoCount === 1 ? "photo" : "photos"}
-              </Text>
+          {/* Top overlay bar — GPS LIVE, count, auth */}
+          <View style={styles.topBar}>
+            <View style={styles.gpsLiveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.gpsLiveText}>GPS LIVE</Text>
             </View>
-            {/* Login / Profile button */}
+            <View style={styles.topRight}>
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {photoCount} {photoCount === 1 ? "photo" : "photos"}
+                </Text>
+              </View>
+              {/* Login / Profile button */}
+              <Pressable
+                style={({ pressed }) => [styles.authOverlayBtn, { opacity: pressed ? 0.75 : 1 }]}
+                onPress={() => {
+                  if (isLoggedIn) {
+                    Alert.alert(
+                      `Signed in: ${user?.phone}`,
+                      "You have unlimited uploads.",
+                      [
+                        { text: "Sign Out", style: "destructive", onPress: logout },
+                        { text: "OK", style: "cancel" },
+                      ],
+                    );
+                  } else {
+                    setShowLoginModal(true);
+                  }
+                }}
+              >
+                {isLoggedIn ? (
+                  <>
+                    <View style={styles.authAvatarSmall}>
+                      <Text style={styles.authAvatarSmallText}>
+                        {user?.phone ? user.phone.replace(/\D/g, "").slice(-1) : "U"}
+                      </Text>
+                    </View>
+                    <View style={styles.authGreenDot} />
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="person-outline" size={18} color="#FFF" />
+                    <View style={styles.authLockDot}>
+                      <Ionicons name="lock-closed" size={7} color="#FFF" />
+                    </View>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Geo-details overlay pinned to bottom of preview */}
+          <PhotoOverlay
+            latitude={latitude}
+            longitude={longitude}
+            altitude={altitude}
+            address={address}
+            locationName={locationName}
+            plusCode={plusCode || computePlusCode(latitude, longitude)}
+            nearPlace={nearPlace}
+            note={note.trim() || undefined}
+            serialNumber={
+              photos.length > 0
+                ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
+                : "IMG-NEXT-001"
+            }
+            timestamp={Date.now()}
+          />
+        </View>
+
+        <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
+
+        {/* ── Note Input (expandable) ─────────────────────────────── */}
+        {showNoteInput && (
+          <View style={styles.noteInputRow}>
+            <Ionicons name="folder-open-outline" size={16} color="rgba(255,230,100,0.9)" />
+            <TextInput
+              style={styles.noteInput}
+              placeholder="Project name or note…"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={note}
+              onChangeText={setNote}
+              maxLength={60}
+              returnKeyType="done"
+              autoFocus
+              autoCapitalize="words"
+            />
+            {note.length > 0 && (
+              <Pressable onPress={() => setNote("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {/* ── Black Control Panel ───────────────────────────────────── */}
+        <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
+          <View style={styles.controlsRow}>
+            {/* Gallery thumbnail */}
             <Pressable
-              style={({ pressed }) => [styles.authOverlayBtn, { opacity: pressed ? 0.75 : 1 }]}
+              style={({ pressed }) => [styles.galleryPreview, { opacity: pressed ? 0.75 : 1 }]}
               onPress={() => {
-                if (isLoggedIn) {
-                  Alert.alert(
-                    `Signed in: ${user?.phone}`,
-                    "You have unlimited uploads.",
-                    [
-                      { text: "Sign Out", style: "destructive", onPress: logout },
-                      { text: "OK", style: "cancel" },
-                    ],
-                  );
-                } else {
-                  setShowLoginModal(true);
+                if (lastCapturedUri) {
+                  const match = photos.find((p) => p.uri === lastCapturedUri);
+                  if (match) {
+                    router.push(`/photo/${match.id}`);
+                    return;
+                  }
                 }
+                router.navigate("/(tabs)/files");
               }}
             >
-              {isLoggedIn ? (
-                <>
-                  <View style={styles.authAvatarSmall}>
-                    <Text style={styles.authAvatarSmallText}>
-                      {user?.phone ? user.phone.replace(/\D/g, "").slice(-1) : "U"}
-                    </Text>
-                  </View>
-                  <View style={styles.authGreenDot} />
-                </>
+              {lastCapturedUri ? (
+                <Image
+                  source={{ uri: lastCapturedUri }}
+                  style={styles.galleryThumb}
+                  contentFit="cover"
+                />
               ) : (
-                <>
-                  <Ionicons name="person-outline" size={18} color="#FFF" />
-                  <View style={styles.authLockDot}>
-                    <Ionicons name="lock-closed" size={7} color="#FFF" />
-                  </View>
-                </>
+                <View style={styles.galleryEmpty}>
+                  <Ionicons name="images-outline" size={22} color="#888" />
+                </View>
               )}
+            </Pressable>
+
+            {/* Capture button */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.captureButton,
+                isCapturing && styles.captureButtonDisabled,
+                { transform: [{ scale: pressed ? 0.93 : 1 }] },
+              ]}
+              onPress={capturePhoto}
+              disabled={isCapturing}
+              testID="capture-button"
+            >
+              {isCapturing ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <View style={styles.captureInner} />
+              )}
+            </Pressable>
+
+            {/* Note toggle */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.iconButton,
+                showNoteInput && styles.iconButtonActive,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              onPress={() => {
+                setShowNoteInput((v) => !v);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            >
+              <Ionicons
+                name={showNoteInput ? "folder-open" : "folder-open-outline"}
+                size={22}
+                color={showNoteInput ? "rgba(255,230,100,0.95)" : "#FFF"}
+              />
+              {note.trim().length > 0 && <View style={styles.noteActiveDot} />}
+            </Pressable>
+          </View>
+
+          {/* Flip camera — smaller row below */}
+          <View style={styles.secondaryRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.secondaryBtn,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              onPress={toggleCamera}
+            >
+              <Ionicons name="camera-reverse-outline" size={20} color="rgba(255,255,255,0.75)" />
+              <Text style={styles.secondaryBtnText}>Flip</Text>
             </Pressable>
           </View>
         </View>
-
-        {/* Geo-details overlay pinned to bottom of preview */}
-        <PhotoOverlay
-          latitude={latitude}
-          longitude={longitude}
-          altitude={altitude}
-          address={address}
-          locationName={locationName}
-          plusCode={plusCode || computePlusCode(latitude, longitude)}
-          nearPlace={nearPlace}
-          serialNumber={
-            photos.length > 0
-              ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
-              : "IMG-NEXT-001"
-          }
-          timestamp={Date.now()}
-        />
-      </View>
-
-      <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
-
-      {/* ── Black Control Panel ───────────────────────────────────── */}
-      <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
-        <View style={styles.controlsRow}>
-          {/* Gallery thumbnail */}
-          <Pressable
-            style={({ pressed }) => [styles.galleryPreview, { opacity: pressed ? 0.75 : 1 }]}
-            onPress={() => {
-              if (lastCapturedUri) {
-                const match = photos.find((p) => p.uri === lastCapturedUri);
-                if (match) {
-                  router.push(`/photo/${match.id}`);
-                  return;
-                }
-              }
-              router.navigate("/(tabs)/files");
-            }}
-          >
-            {lastCapturedUri ? (
-              <Image
-                source={{ uri: lastCapturedUri }}
-                style={styles.galleryThumb}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.galleryEmpty}>
-                <Ionicons name="images-outline" size={22} color="#888" />
-              </View>
-            )}
-          </Pressable>
-
-          {/* Capture button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.captureButton,
-              isCapturing && styles.captureButtonDisabled,
-              { transform: [{ scale: pressed ? 0.93 : 1 }] },
-            ]}
-            onPress={capturePhoto}
-            disabled={isCapturing}
-            testID="capture-button"
-          >
-            {isCapturing ? (
-              <ActivityIndicator size="small" color="#000" />
-            ) : (
-              <View style={styles.captureInner} />
-            )}
-          </Pressable>
-
-          {/* Flip camera */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-            onPress={toggleCamera}
-          >
-            <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
-          </Pressable>
-        </View>
-      </View>
-    </FadeInView>
+      </FadeInView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -690,36 +749,63 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 11,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
-  topButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
+  noteInputRow: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "rgba(30,30,30,0.98)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,230,100,0.25)",
+  },
+  noteInput: {
+    flex: 1,
+    color: "#FFF",
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    paddingVertical: 2,
   },
   controlPanel: {
+    flex: 1,
     backgroundColor: "#000",
     justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 20,
+    paddingTop: 12,
   },
   controlsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 48,
-    width: "100%",
+    paddingHorizontal: 36,
+  },
+  secondaryRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  secondaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  secondaryBtnText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   galleryPreview: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     overflow: "hidden",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
+    borderColor: "rgba(255,255,255,0.2)",
   },
   galleryThumb: {
     width: "100%",
@@ -728,35 +814,52 @@ const styles = StyleSheet.create({
   galleryEmpty: {
     width: "100%",
     height: "100%",
+    backgroundColor: "#222",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
   },
   captureButton: {
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: "transparent",
+    backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 4,
-    borderColor: "#FFF",
+    borderColor: "rgba(255,255,255,0.35)",
   },
   captureButtonDisabled: {
-    borderColor: "rgba(255,255,255,0.4)",
+    opacity: 0.6,
   },
   captureInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: "#FFF",
+    borderWidth: 2,
+    borderColor: "#CCC",
   },
   iconButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.1)",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    position: "relative",
+  },
+  iconButtonActive: {
+    backgroundColor: "rgba(255,230,100,0.12)",
+  },
+  noteActiveDot: {
+    position: "absolute",
+    top: 9,
+    right: 9,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "rgba(255,230,100,0.95)",
+    borderWidth: 1,
+    borderColor: "#000",
   },
 });

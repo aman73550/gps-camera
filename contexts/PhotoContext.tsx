@@ -7,6 +7,7 @@ import {
   ReactNode,
   useEffect,
 } from "react";
+import * as Network from "expo-network";
 import {
   PhotoRecord,
   getAllPhotos,
@@ -14,6 +15,7 @@ import {
   deletePhotoRecord,
   getPhotoBySerial,
   getUploadCount,
+  setPendingUpload as storageSetPendingUpload,
 } from "@/lib/photo-storage";
 
 interface PhotoContextValue {
@@ -21,12 +23,15 @@ interface PhotoContextValue {
   isLoading: boolean;
   uploadCount: number;
   maxGuestUploads: number;
+  pendingCount: number;
+  isOnline: boolean;
   refreshPhotos: () => Promise<void>;
   addPhoto: (record: PhotoRecord) => Promise<void>;
   removePhoto: (id: string) => Promise<void>;
   removePhotos: (ids: string[]) => Promise<void>;
   searchBySerial: (serial: string) => Promise<PhotoRecord | undefined>;
   filterPhotos: (query: string) => PhotoRecord[];
+  setPendingUpload: (id: string, pending: boolean) => Promise<void>;
 }
 
 const PhotoContext = createContext<PhotoContextValue | null>(null);
@@ -35,7 +40,13 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadCount, setUploadCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(true);
   const maxGuestUploads = 20;
+
+  const pendingCount = useMemo(
+    () => photos.filter((p) => !p.uploadedAt).length,
+    [photos],
+  );
 
   const refreshPhotos = useCallback(async () => {
     setIsLoading(true);
@@ -55,6 +66,16 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshPhotos();
   }, [refreshPhotos]);
+
+  useEffect(() => {
+    Network.getNetworkStateAsync().then((state) => {
+      setIsOnline(state.isConnected !== false && state.isInternetReachable !== false);
+    });
+    const sub = Network.addNetworkStateListener((state) => {
+      setIsOnline(state.isConnected !== false && state.isInternetReachable !== false);
+    });
+    return () => sub.remove();
+  }, []);
 
   const addPhoto = useCallback(
     async (record: PhotoRecord) => {
@@ -99,30 +120,44 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
     [photos],
   );
 
+  const setPendingUpload = useCallback(
+    async (id: string, pending: boolean) => {
+      await storageSetPendingUpload(id, pending);
+      await refreshPhotos();
+    },
+    [refreshPhotos],
+  );
+
   const value = useMemo(
     () => ({
       photos,
       isLoading,
       uploadCount,
       maxGuestUploads,
+      pendingCount,
+      isOnline,
       refreshPhotos,
       addPhoto,
       removePhoto,
       removePhotos,
       searchBySerial,
       filterPhotos,
+      setPendingUpload,
     }),
     [
       photos,
       isLoading,
       uploadCount,
       maxGuestUploads,
+      pendingCount,
+      isOnline,
       refreshPhotos,
       addPhoto,
       removePhoto,
       removePhotos,
       searchBySerial,
       filterPhotos,
+      setPendingUpload,
     ],
   );
 

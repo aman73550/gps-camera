@@ -26,6 +26,11 @@ A professional GPS camera app built with Expo React Native that captures geo-tag
 - **Dynamic Tiers**: Guest (20 total), Standard (50/day, 1000/month), Pro (unlimited) — enforced server-side via Supabase
 - **Admin Panel**: Web UI at `/admin` with dashboard stats, 7-day chart, user tier management (upgrade/downgrade), paginated uploads table, and retention policy settings
 - **Auto-Delete Cleanup**: Server-side nightly cron at 2am that deletes uploads exceeding the configured retention period (3/6/12 months) when enabled in the admin panel
+- **Offline Queue**: Network monitoring via expo-network; offline banner in Files tab shows pending count; uploads that fail due to network are marked `pendingUpload: true` and shown in the tab badge
+- **Custom Text Overlay**: Optional Project Name/Note field on camera (folder icon button toggles it); note is permanently burned into pixel overlay, shown with yellow label above GPS data strip
+- **App Version Check**: On startup pings Supabase `app_settings.required_version`; if current app version is lower, shows a non-dismissible update dialog directing user to the app store
+- **Privacy Policy**: Settings tab added to navigation; contains Privacy Policy and Terms of Service links (update URLs in `app/(tabs)/settings.tsx`)
+- **Haptic + Shutter Sync**: Camera shutter and haptic feedback now fire simultaneously via `Promise.all` for a premium feel
 
 ## File Structure
 

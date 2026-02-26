@@ -11,6 +11,7 @@ interface PhotoOverlayProps {
   locationName: string;
   plusCode: string;
   nearPlace?: string;
+  note?: string;
   serialNumber: string;
   timestamp: number;
 }
@@ -23,6 +24,7 @@ export function PhotoOverlay({
   locationName,
   plusCode,
   nearPlace,
+  note,
   serialNumber,
   timestamp,
 }: PhotoOverlayProps) {
@@ -38,6 +40,12 @@ export function PhotoOverlay({
 
   return (
     <View style={styles.container}>
+      {note ? (
+        <View style={styles.noteBar}>
+          <Ionicons name="folder-open-outline" size={11} color="rgba(255,230,100,0.95)" />
+          <Text style={styles.noteText} numberOfLines={1}>{note}</Text>
+        </View>
+      ) : null}
       <View style={styles.overlayBox}>
 
         {/* Left: QR + Serial */}
@@ -102,6 +110,23 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
+  },
+  noteBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(15, 15, 15, 0.85)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,230,100,0.3)",
+  },
+  noteText: {
+    color: "rgba(255,230,100,0.95)",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    flex: 1,
+    letterSpacing: 0.2,
   },
   overlayBox: {
     flexDirection: "row",
