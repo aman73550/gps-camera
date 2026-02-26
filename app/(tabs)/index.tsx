@@ -26,6 +26,7 @@ import {
   ensurePhotosDirectory,
   getPhotosDirectory,
   incrementUploadCount,
+  computePlusCode,
   PhotoRecord,
 } from "@/lib/photo-storage";
 
@@ -46,7 +47,10 @@ export default function CameraTab() {
 
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
+  const [altitude, setAltitude] = useState(0);
   const [address, setAddress] = useState("Fetching location...");
+  const [locationName, setLocationName] = useState("Unknown Location");
+  const [plusCode, setPlusCode] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
@@ -64,9 +68,15 @@ export default function CameraTab() {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
         const watchId = navigator.geolocation.watchPosition(
           (pos) => {
-            setLatitude(pos.coords.latitude);
-            setLongitude(pos.coords.longitude);
-            setAddress("Web location");
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const alt = pos.coords.altitude ?? 0;
+            setLatitude(lat);
+            setLongitude(lon);
+            setAltitude(alt);
+            setPlusCode(computePlusCode(lat, lon));
+            setLocationName("Web Location");
+            setAddress("Location detected via browser");
           },
           () => setAddress("Location unavailable"),
           { enableHighAccuracy: true },
@@ -86,23 +96,38 @@ export default function CameraTab() {
           const loc = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.High,
           });
-          setLatitude(loc.coords.latitude);
-          setLongitude(loc.coords.longitude);
+          const lat = loc.coords.latitude;
+          const lon = loc.coords.longitude;
+          const alt = loc.coords.altitude ?? 0;
+          setLatitude(lat);
+          setLongitude(lon);
+          setAltitude(alt);
+          setPlusCode(computePlusCode(lat, lon));
 
           const reverseGeocode = await Location.reverseGeocodeAsync({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
+            latitude: lat,
+            longitude: lon,
           });
 
           if (reverseGeocode.length > 0) {
             const place = reverseGeocode[0];
-            const parts = [
-              place.street,
-              place.city,
+            const nameParts = [
+              place.name && place.name !== place.street ? place.name : null,
+              place.city || place.district,
               place.region,
               place.country,
             ].filter(Boolean);
-            setAddress(parts.join(", ") || "Unknown location");
+            setLocationName(nameParts.join(", ") || "Unknown Location");
+
+            const addrParts = [
+              place.streetNumber,
+              place.street,
+              place.city || place.district,
+              place.region,
+              place.postalCode,
+              place.country,
+            ].filter(Boolean);
+            setAddress(addrParts.join(", ") || "Unknown location");
           }
         } catch {
           setAddress("Location unavailable");
@@ -171,7 +196,10 @@ export default function CameraTab() {
         uri: destUri,
         latitude,
         longitude,
+        altitude,
         address,
+        locationName,
+        plusCode,
         timestamp: now.getTime(),
         compressed: true,
       };
@@ -186,7 +214,7 @@ export default function CameraTab() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, latitude, longitude, address, addPhoto, uploadCount, maxGuestUploads]);
+  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, addPhoto, uploadCount, maxGuestUploads]);
 
   const toggleCamera = useCallback(() => {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
@@ -323,12 +351,26 @@ export default function CameraTab() {
               <Text style={styles.liveCoords}>
                 {latitude.toFixed(6)}, {longitude.toFixed(6)}
               </Text>
+              {altitude > 0 && (
+                <Text style={styles.liveAlt}> · {Math.round(altitude)}m</Text>
+              )}
             </View>
             <Text style={styles.liveAddress} numberOfLines={1}>
-              {address}
+              {locationName !== "Unknown Location" ? locationName : address}
             </Text>
           </View>
         </View>
+
+        <PhotoOverlay
+          latitude={latitude}
+          longitude={longitude}
+          altitude={altitude}
+          address={address}
+          locationName={locationName}
+          plusCode={plusCode || computePlusCode(latitude, longitude)}
+          serialNumber={photos.length > 0 ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}` : "IMG-NEXT-001"}
+          timestamp={Date.now()}
+        />
 
         <View style={styles.bottomControls}>
           <View
@@ -535,6 +577,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 4,
     marginLeft: 20,
+  },
+  liveAlt: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
   },
   bottomControls: {
     position: "absolute",

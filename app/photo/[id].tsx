@@ -17,6 +17,23 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { QRCodeView } from "@/components/QRCodeView";
+import { PhotoOverlay } from "@/components/PhotoOverlay";
+import { PhotoRecord } from "@/lib/photo-storage";
+
+function PhotoDetailOverlay({ photo }: { photo: PhotoRecord }) {
+  return (
+    <PhotoOverlay
+      latitude={photo.latitude}
+      longitude={photo.longitude}
+      altitude={photo.altitude ?? 0}
+      address={photo.address}
+      locationName={photo.locationName ?? photo.address}
+      plusCode={photo.plusCode ?? ""}
+      serialNumber={photo.serialNumber}
+      timestamp={photo.timestamp}
+    />
+  );
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -112,6 +129,7 @@ export default function PhotoDetailScreen() {
               contentFit="cover"
               transition={300}
             />
+            <PhotoDetailOverlay photo={photo} />
           </View>
 
           <View style={styles.detailsContainer}>
@@ -133,13 +151,40 @@ export default function PhotoDetailScreen() {
                   <Ionicons name="location" size={18} color={Colors.light.primary} />
                 </View>
                 <View style={styles.infoTextWrap}>
-                  <Text style={styles.infoLabel}>Location</Text>
+                  <Text style={styles.infoLabel}>Location Name</Text>
                   <Text style={styles.infoValue}>
-                    {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
+                    {photo.locationName ?? photo.address}
                   </Text>
                   <Text style={styles.infoSubValue}>{photo.address}</Text>
                 </View>
               </View>
+
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons name="navigate" size={18} color={Colors.light.primary} />
+                </View>
+                <View style={styles.infoTextWrap}>
+                  <Text style={styles.infoLabel}>GPS Coordinates</Text>
+                  <Text style={styles.infoValue}>
+                    {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
+                  </Text>
+                  {(photo.altitude ?? 0) > 0 && (
+                    <Text style={styles.infoSubValue}>Altitude: {Math.round(photo.altitude ?? 0)} m</Text>
+                  )}
+                </View>
+              </View>
+
+              {photo.plusCode ? (
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconWrap}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={18} color={Colors.light.primary} />
+                  </View>
+                  <View style={styles.infoTextWrap}>
+                    <Text style={styles.infoLabel}>Plus Code</Text>
+                    <Text style={styles.infoValue}>{photo.plusCode}</Text>
+                  </View>
+                </View>
+              ) : null}
 
               <View style={styles.infoRow}>
                 <View style={styles.infoIconWrap}>

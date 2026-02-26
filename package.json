@@ -47,6 +47,7 @@
     "expo-web-browser": "~15.0.10",
     "express": "^5.0.1",
     "http-proxy-middleware": "^3.0.5",
+    "open-location-code": "^1.0.3",
     "pg": "^8.16.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",

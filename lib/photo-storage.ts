@@ -8,7 +8,10 @@ export interface PhotoRecord {
   uri: string;
   latitude: number;
   longitude: number;
+  altitude: number;
   address: string;
+  locationName: string;
+  plusCode: string;
   timestamp: number;
   compressed: boolean;
 }
@@ -32,13 +35,35 @@ export async function ensurePhotosDirectory(): Promise<void> {
 export async function generateSerialNumber(): Promise<string> {
   const now = new Date();
   const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-
   const counterStr = await AsyncStorage.getItem(COUNTER_KEY);
   let counter = counterStr ? parseInt(counterStr, 10) : 0;
   counter += 1;
   await AsyncStorage.setItem(COUNTER_KEY, counter.toString());
-
   return `IMG-${dateStr}-${String(counter).padStart(3, "0")}`;
+}
+
+export function computePlusCode(lat: number, lon: number): string {
+  try {
+    const { OpenLocationCode } = require("open-location-code");
+    const olc = new OpenLocationCode();
+    return olc.encode(lat, lon, 10);
+  } catch {
+    const ALPHA = "23456789CFGHJMPQRVWX";
+    const norm = (v: number, range: number, n: number): number[] => {
+      const digits: number[] = [];
+      let x = ((v % range) + range) % range;
+      for (let i = 0; i < n; i++) {
+        const step = range / Math.pow(20, i + 1);
+        digits.push(Math.floor(x / step) % 20);
+      }
+      return digits;
+    };
+    const la = norm(lat + 90, 180, 4);
+    const lo = norm(lon + 180, 360, 4);
+    let code = "";
+    for (let i = 0; i < 4; i++) code += ALPHA[la[i]] + ALPHA[lo[i]];
+    return code.slice(0, 8) + "+" + code.slice(8, 10).padEnd(2, "2");
+  }
 }
 
 export async function getAllPhotos(): Promise<PhotoRecord[]> {
@@ -96,4 +121,14 @@ export async function incrementUploadCount(): Promise<number> {
 
 export function generateId(): string {
   return Crypto.randomUUID();
+}
+
+export function formatDateLong(timestamp: number): string {
+  const date = new Date(timestamp);
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const s = String(date.getSeconds()).padStart(2, "0");
+  return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} ${h}:${m}:${s}`;
 }
