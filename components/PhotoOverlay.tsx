@@ -43,7 +43,7 @@ export function PhotoOverlay({
           <View style={styles.qrWrapper}>
             <QRCodeView
               value={serialNumber || "GPS-CAMERA"}
-              size={48}
+              size={76}
               backgroundColor="#1a1a1a"
               color="#FFFFFF"
             />
@@ -105,15 +105,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   leftSection: {
-    width: 68,
+    width: 96,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 4,
   },
   qrWrapper: {
-    padding: 3,
+    padding: 4,
     backgroundColor: "#1a1a1a",
-    borderRadius: 3,
+    borderRadius: 4,
   },
   serialText: {
     color: "#FFFFFF",

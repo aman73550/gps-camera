@@ -86,61 +86,68 @@ export default function CameraTab() {
       return;
     }
 
-    let interval: ReturnType<typeof setInterval>;
+    let watcher: Location.LocationSubscription | null = null;
+
+    const applyLocation = async (lat: number, lon: number, alt: number) => {
+      setLatitude(lat);
+      setLongitude(lon);
+      setAltitude(alt);
+      setPlusCode(computePlusCode(lat, lon));
+      try {
+        const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+        if (reverseGeocode.length > 0) {
+          const place = reverseGeocode[0];
+          const nameParts = [
+            place.name && place.name !== place.street ? place.name : null,
+            place.city || place.district,
+            place.region,
+            place.country,
+          ].filter(Boolean);
+          setLocationName(nameParts.join(", ") || "Unknown Location");
+          const addrParts = [
+            place.streetNumber,
+            place.street,
+            place.city || place.district,
+            place.region,
+            place.postalCode,
+            place.country,
+          ].filter(Boolean);
+          setAddress(addrParts.join(", ") || "Unknown location");
+        }
+      } catch {
+        setAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+      }
+    };
 
     const startLocationUpdates = async () => {
       if (!locationPermission?.granted) return;
 
-      const updateLocation = async () => {
-        try {
-          const loc = await Location.getCurrentPositionAsync({
+      try {
+        const quick = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        await applyLocation(quick.coords.latitude, quick.coords.longitude, quick.coords.altitude ?? 0);
+      } catch {}
+
+      try {
+        watcher = await Location.watchPositionAsync(
+          {
             accuracy: Location.Accuracy.High,
-          });
-          const lat = loc.coords.latitude;
-          const lon = loc.coords.longitude;
-          const alt = loc.coords.altitude ?? 0;
-          setLatitude(lat);
-          setLongitude(lon);
-          setAltitude(alt);
-          setPlusCode(computePlusCode(lat, lon));
-
-          const reverseGeocode = await Location.reverseGeocodeAsync({
-            latitude: lat,
-            longitude: lon,
-          });
-
-          if (reverseGeocode.length > 0) {
-            const place = reverseGeocode[0];
-            const nameParts = [
-              place.name && place.name !== place.street ? place.name : null,
-              place.city || place.district,
-              place.region,
-              place.country,
-            ].filter(Boolean);
-            setLocationName(nameParts.join(", ") || "Unknown Location");
-
-            const addrParts = [
-              place.streetNumber,
-              place.street,
-              place.city || place.district,
-              place.region,
-              place.postalCode,
-              place.country,
-            ].filter(Boolean);
-            setAddress(addrParts.join(", ") || "Unknown location");
-          }
-        } catch {
-          setAddress("Location unavailable");
-        }
-      };
-
-      await updateLocation();
-      interval = setInterval(updateLocation, 5000);
+            timeInterval: 4000,
+            distanceInterval: 5,
+          },
+          async (loc) => {
+            await applyLocation(loc.coords.latitude, loc.coords.longitude, loc.coords.altitude ?? 0);
+          },
+        );
+      } catch {
+        setAddress("Location unavailable");
+      }
     };
 
     startLocationUpdates();
     return () => {
-      if (interval) clearInterval(interval);
+      watcher?.remove();
     };
   }, [locationPermission?.granted]);
 
