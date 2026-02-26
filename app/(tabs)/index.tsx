@@ -460,47 +460,10 @@ export default function CameraTab() {
       style={{ flex: 1, backgroundColor: "#000" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <FadeInView style={[styles.container, { paddingTop: topInset }]}>
-        {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
-        <View style={styles.previewWrapper}>
+      <FadeInView style={styles.container}>
 
-          {/* compositeRef wraps only the image content — no UI controls */}
-          <View ref={compositeRef} style={StyleSheet.absoluteFill} collapsable={false}>
-            <CameraView
-              ref={cameraRef}
-              style={StyleSheet.absoluteFill}
-              facing={facing}
-              flash={flash}
-            />
-            {/* Frozen frame — shown during composite capture so overlay burns onto the actual frame */}
-            {frozenUri && (
-              <Image
-                source={{ uri: frozenUri }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-              />
-            )}
-            {/* Geo overlay — inside compositeRef so it burns into the saved image */}
-            <PhotoOverlay
-              latitude={latitude}
-              longitude={longitude}
-              altitude={altitude}
-              address={address}
-              locationName={locationName}
-              plusCode={plusCode || computePlusCode(latitude, longitude)}
-              nearPlace={nearPlace}
-              note={note.trim() || undefined}
-              serialNumber={
-                photos.length > 0
-                  ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
-                  : "IMG-NEXT-001"
-              }
-              timestamp={Date.now()}
-            />
-          </View>
-
-          {/* Top overlay bar — flash, count, auth — NOT inside compositeRef */}
-          <View style={styles.topBar}>
+        {/* ── Black header stripe ─────────────────────────────────── */}
+        <View style={[styles.topBar, { paddingTop: topInset }]}>
             {facing === "back" ? (
               <Pressable
                 style={({ pressed }) => [styles.flashBtn, { opacity: pressed ? 0.7 : 1 }]}
@@ -568,6 +531,44 @@ export default function CameraTab() {
                 )}
               </Pressable>
             </View>
+          </View>
+
+        {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
+        <View style={styles.previewWrapper}>
+
+          {/* compositeRef wraps only the image content — no UI controls */}
+          <View ref={compositeRef} style={StyleSheet.absoluteFill} collapsable={false}>
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              flash={flash}
+            />
+            {/* Frozen frame — shown during composite capture so overlay burns onto the actual frame */}
+            {frozenUri && (
+              <Image
+                source={{ uri: frozenUri }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+            )}
+            {/* Geo overlay — inside compositeRef so it burns into the saved image */}
+            <PhotoOverlay
+              latitude={latitude}
+              longitude={longitude}
+              altitude={altitude}
+              address={address}
+              locationName={locationName}
+              plusCode={plusCode || computePlusCode(latitude, longitude)}
+              nearPlace={nearPlace}
+              note={note.trim() || undefined}
+              serialNumber={
+                photos.length > 0
+                  ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
+                  : "IMG-NEXT-001"
+              }
+              timestamp={Date.now()}
+            />
           </View>
 
         </View>
@@ -735,14 +736,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   topBar: {
-    position: "absolute",
-    top: 10,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 14,
+    paddingBottom: 10,
+    backgroundColor: "#000",
+    width: "100%",
   },
   topRight: {
     flexDirection: "row",
