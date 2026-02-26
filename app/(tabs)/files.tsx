@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -76,6 +76,15 @@ function PhotoGridItem({ item, isSelectMode, isSelected, onPress, onLongPress }:
           contentFit="cover"
           transition={150}
         />
+        {!isSelectMode && (
+          <View style={styles.syncBadge} pointerEvents="none">
+            <Ionicons
+              name={item.uploadedAt ? "cloud-done" : "cloud-outline"}
+              size={15}
+              color={item.uploadedAt ? "#34C759" : "rgba(255,255,255,0.75)"}
+            />
+          </View>
+        )}
         {isSelectMode && (
           <View style={[styles.selectionOverlay, isSelected && styles.selectionOverlayActive]}>
             <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
@@ -104,9 +113,15 @@ export default function FilesTab() {
   const [showGuestLimitModal, setShowGuestLimitModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [visibleCount, setVisibleCount] = useState(20);
   const hasScanned = useRef(false);
 
   const filteredPhotos = filterPhotos(searchQuery);
+  const visiblePhotos = filteredPhotos.slice(0, visibleCount);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [searchQuery]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -192,6 +207,7 @@ export default function FilesTab() {
         isLoggedIn,
       );
       exitSelectMode();
+      await refreshPhotos();
       const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
       if (guestLimitHit) {
         setShowGuestLimitModal(true);
@@ -412,7 +428,7 @@ export default function FilesTab() {
         </View>
       ) : (
         <FlatList
-          data={filteredPhotos}
+          data={visiblePhotos}
           renderItem={({ item }) => (
             <PhotoGridItem
               item={item}
@@ -440,6 +456,24 @@ export default function FilesTab() {
               <Text style={styles.emptyDesc}>Photos taken with GPS Camera will appear here.</Text>
             </View>
           }
+          ListFooterComponent={
+            visibleCount < filteredPhotos.length ? (
+              <View style={styles.paginationFooter}>
+                <ActivityIndicator size="small" color={Colors.light.primary} />
+                <Text style={styles.paginationText}>
+                  Showing {visibleCount} of {filteredPhotos.length}
+                </Text>
+              </View>
+            ) : filteredPhotos.length > 20 ? (
+              <Text style={styles.paginationEnd}>All {filteredPhotos.length} photos loaded</Text>
+            ) : null
+          }
+          onEndReached={() => {
+            if (visibleCount < filteredPhotos.length) {
+              setVisibleCount((prev) => Math.min(prev + 20, filteredPhotos.length));
+            }
+          }}
+          onEndReachedThreshold={0.4}
           scrollEnabled={!!filteredPhotos.length}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors.light.primary} />}
           testID="photo-grid"
@@ -689,6 +723,36 @@ const styles = StyleSheet.create({
   checkCircleActive: {
     backgroundColor: Colors.light.primary,
     borderColor: Colors.light.primary,
+  },
+  syncBadge: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  paginationFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  paginationText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+  },
+  paginationEnd: {
+    textAlign: "center",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textTertiary,
+    paddingVertical: 14,
   },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
   emptyIconWrap: { width: 100, height: 100, borderRadius: 50, backgroundColor: Colors.light.surfaceVariant, justifyContent: "center", alignItems: "center", marginBottom: 20 },

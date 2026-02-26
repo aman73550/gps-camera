@@ -20,6 +20,8 @@ A professional GPS camera app built with Expo React Native that captures geo-tag
 - **Security**: Photos stored in private app directory, AsyncStorage whitelist verification; unauthorized files blocked on upload
 - **Guest Mode**: 20-photo upload limit for guests
 - **Batch Operations**: Upload, Share, Save to DCIM gallery, and Delete multiple photos at once
+- **Sync Status**: Each photo shows a grey cloud (local only) or green cloud-done (uploaded) badge in the grid and detail view; status updates immediately after upload
+- **Infinite Scroll Pagination**: Files tab loads 20 photos initially and loads the next 20 as user scrolls to the bottom, with a footer showing current vs total count
 
 ## File Structure
 

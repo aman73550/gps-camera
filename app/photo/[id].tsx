@@ -47,7 +47,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function PhotoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { photos, removePhoto } = usePhotos();
+  const { photos, removePhoto, refreshPhotos } = usePhotos();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
 
@@ -142,6 +142,7 @@ export default function PhotoDetailScreen() {
     setUploadStatus("Verifying…");
     try {
       await uploadPhoto(photo, (status) => setUploadStatus(status), isLoggedIn);
+      await refreshPhotos();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Upload Complete", `${photo.serialNumber} uploaded successfully.`);
     } catch (err: unknown) {
@@ -303,6 +304,30 @@ export default function PhotoDetailScreen() {
                 <View style={styles.infoTextWrap}>
                   <Text style={styles.infoLabel}>Verification Status</Text>
                   <Text style={[styles.infoValue, { color: Colors.light.success }]}>Verified & Whitelisted</Text>
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons
+                    name={photo.uploadedAt ? "cloud-done" : "cloud-outline"}
+                    size={18}
+                    color={photo.uploadedAt ? Colors.light.success : Colors.light.textTertiary}
+                  />
+                </View>
+                <View style={styles.infoTextWrap}>
+                  <Text style={styles.infoLabel}>Sync Status</Text>
+                  {photo.uploadedAt ? (
+                    <>
+                      <Text style={[styles.infoValue, { color: Colors.light.success }]}>Uploaded to server</Text>
+                      <Text style={styles.infoSubValue}>
+                        {new Date(photo.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}{" "}
+                        {new Date(photo.uploadedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.infoValue, { color: Colors.light.textSecondary }]}>Saved locally only</Text>
+                  )}
                 </View>
               </View>
             </View>

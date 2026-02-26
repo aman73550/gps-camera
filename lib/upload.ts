@@ -4,6 +4,7 @@ import {
   getPhotoByUri,
   getUploadCount,
   incrementUploadCount,
+  markPhotoAsUploaded,
   getPhotosDirectory,
   PhotoRecord,
 } from "./photo-storage";
@@ -106,6 +107,7 @@ export async function uploadPhoto(
   }
 
   await incrementUploadCount();
+  await markPhotoAsUploaded(photo.id);
   onProgress?.("Done");
 }
 

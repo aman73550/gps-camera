@@ -15,6 +15,7 @@ export interface PhotoRecord {
   nearPlace?: string;
   timestamp: number;
   compressed: boolean;
+  uploadedAt?: number;
 }
 
 const PHOTOS_KEY = "@gps_camera_photos";
@@ -129,6 +130,34 @@ export async function incrementUploadCount(): Promise<number> {
   const next = current + 1;
   await AsyncStorage.setItem(UPLOAD_COUNT_KEY, next.toString());
   return next;
+}
+
+export async function markPhotoAsUploaded(id: string): Promise<void> {
+  try {
+    const data = await AsyncStorage.getItem(PHOTOS_KEY);
+    if (!data) return;
+    const photos: PhotoRecord[] = JSON.parse(data);
+    const idx = photos.findIndex((p) => p.id === id);
+    if (idx !== -1) {
+      photos[idx] = { ...photos[idx], uploadedAt: Date.now() };
+      await AsyncStorage.setItem(PHOTOS_KEY, JSON.stringify(photos));
+    }
+  } catch {}
+}
+
+export async function getPhotosPage(
+  offset: number,
+  limit: number,
+): Promise<{ photos: PhotoRecord[]; total: number }> {
+  try {
+    const data = await AsyncStorage.getItem(PHOTOS_KEY);
+    if (!data) return { photos: [], total: 0 };
+    const all: PhotoRecord[] = JSON.parse(data);
+    all.sort((a, b) => b.timestamp - a.timestamp);
+    return { photos: all.slice(offset, offset + limit), total: all.length };
+  } catch {
+    return { photos: [], total: 0 };
+  }
 }
 
 export function generateId(): string {
