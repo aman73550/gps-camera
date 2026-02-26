@@ -87,7 +87,7 @@ export function PhotoOverlay({
           <View style={styles.bottomRow}>
             <View style={styles.watermarkTag}>
               <MaterialCommunityIcons name="shield-check" size={11} color="rgba(255,210,60,0.95)" />
-              <Text style={styles.watermarkText}>GPS Camera · Verified</Text>
+              <Text style={styles.watermarkText}>Click By Verified GPS Camera</Text>
             </View>
             <View style={styles.metaSpacer} />
             <View style={styles.metaItem}>
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   scanHintText: {
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.88)",
     fontSize: 10,
     fontFamily: "Inter_400Regular",
     letterSpacing: 0.3,
