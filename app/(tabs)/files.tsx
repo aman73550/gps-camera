@@ -30,9 +30,12 @@ import Animated, {
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { PhotoRecord } from "@/lib/photo-storage";
 import { uploadPhotoBatch, GUEST_LIMIT_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
+import { LoginModal } from "@/components/LoginModal";
+import { GuestLimitModal } from "@/components/GuestLimitModal";
 
 const M3_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 
@@ -89,6 +92,7 @@ export default function FilesTab() {
   const insets = useSafeAreaInsets();
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
     uploadCount, maxGuestUploads, removePhotos } = usePhotos();
+  const { isLoggedIn, user, logout } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -97,6 +101,8 @@ export default function FilesTab() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [batchStatus, setBatchStatus] = useState("");
+  const [showGuestLimitModal, setShowGuestLimitModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const hasScanned = useRef(false);
 
@@ -183,15 +189,12 @@ export default function FilesTab() {
       const { succeeded, failed } = await uploadPhotoBatch(
         selectedPhotos,
         (current, total, status) => setBatchStatus(`${current}/${total} — ${status}`),
+        isLoggedIn,
       );
       exitSelectMode();
       const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
       if (guestLimitHit) {
-        Alert.alert(
-          "Upload Limit Reached",
-          `You have used all 20 guest uploads.\n\n${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded before the limit.\n\nLogin to continue uploading without limits.`,
-          [{ text: "OK" }],
-        );
+        setShowGuestLimitModal(true);
       } else if (failed.length === 0) {
         Alert.alert("Upload Complete", `${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded successfully.`);
       } else {
@@ -203,7 +206,7 @@ export default function FilesTab() {
       setIsBatchProcessing(false);
       setBatchStatus("");
     }
-  }, [selectedPhotos, exitSelectMode]);
+  }, [selectedPhotos, exitSelectMode, isLoggedIn]);
 
   const handleBatchShare = useCallback(async () => {
     if (selectedPhotos.length === 0) return;
@@ -327,10 +330,49 @@ export default function FilesTab() {
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Files</Text>
-            <Text style={styles.headerSub}>{photos.length} photo{photos.length !== 1 ? "s" : ""} · Guest {uploadCount}/{maxGuestUploads}</Text>
+            <Text style={styles.headerSub}>
+              {photos.length} photo{photos.length !== 1 ? "s" : ""}
+              {isLoggedIn
+                ? ` · ${user?.name ?? "Signed in"}`
+                : ` · Guest ${uploadCount}/${maxGuestUploads}`}
+            </Text>
           </View>
-          <Pressable style={({ pressed }) => [styles.scanButton, { opacity: pressed ? 0.8 : 1 }]} onPress={handleScan} testID="scan-button">
-            <MaterialCommunityIcons name="qrcode-scan" size={22} color={Colors.light.primary} />
+          {/* Auth status button */}
+          <Pressable
+            style={({ pressed }) => [styles.authBtn, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => {
+              if (isLoggedIn) {
+                Alert.alert(
+                  `Signed in as ${user?.email}`,
+                  "You have unlimited uploads.",
+                  [
+                    { text: "Sign Out", style: "destructive", onPress: logout },
+                    { text: "OK", style: "cancel" },
+                  ],
+                );
+              } else {
+                setShowLoginModal(true);
+              }
+            }}
+            testID="auth-button"
+          >
+            {isLoggedIn ? (
+              <>
+                <View style={styles.authAvatarCircle}>
+                  <Text style={styles.authAvatarText}>
+                    {(user?.name ?? "U")[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.authGreenDot} />
+              </>
+            ) : (
+              <>
+                <Ionicons name="person-outline" size={20} color={Colors.light.primary} />
+                <View style={styles.authLockBadge}>
+                  <Ionicons name="lock-closed" size={8} color="#FFF" />
+                </View>
+              </>
+            )}
           </Pressable>
         </View>
       )}
@@ -443,6 +485,42 @@ export default function FilesTab() {
           </Pressable>
         </View>
       )}
+
+      {/* QR Scan FAB — bottom right, above tab bar */}
+      {!isSelectMode && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.qrFab,
+            {
+              bottom: Platform.OS === "web"
+                ? 84 + 20
+                : insets.bottom + 50 + 20,
+              opacity: pressed ? 0.85 : 1,
+              transform: [{ scale: pressed ? 0.94 : 1 }],
+            },
+          ]}
+          onPress={handleScan}
+          testID="qr-fab"
+        >
+          <MaterialCommunityIcons name="qrcode-scan" size={26} color="#FFF" />
+        </Pressable>
+      )}
+
+      {/* Modals */}
+      <LoginModal
+        visible={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
+      <GuestLimitModal
+        visible={showGuestLimitModal}
+        used={uploadCount}
+        max={maxGuestUploads}
+        onLogin={() => {
+          setShowGuestLimitModal(false);
+          setShowLoginModal(true);
+        }}
+        onDismiss={() => setShowGuestLimitModal(false)}
+      />
     </FadeInView>
   );
 }
@@ -471,13 +549,67 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     marginTop: 1,
   },
-  scanButton: {
+  authBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: Colors.light.primaryContainer,
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
+  },
+  authAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.light.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  authAvatarText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  authGreenDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#34C759",
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  authLockBadge: {
+    position: "absolute",
+    bottom: 3,
+    right: 3,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Colors.light.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#FFF",
+  },
+  qrFab: {
+    position: "absolute",
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.light.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    zIndex: 99,
   },
   selectHeader: {
     flexDirection: "row",

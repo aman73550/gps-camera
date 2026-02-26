@@ -24,6 +24,7 @@ import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { PhotoRecord } from "@/lib/photo-storage";
 import { uploadPhoto, GUEST_LIMIT_ERROR } from "@/lib/upload";
 import { captureRef } from "react-native-view-shot";
+import { useAuth } from "@/contexts/AuthContext";
 
 function PhotoDetailOverlay({ photo }: { photo: PhotoRecord }) {
   return (
@@ -51,6 +52,7 @@ export default function PhotoDetailScreen() {
   const [uploadStatus, setUploadStatus] = useState("");
 
   const imageContainerRef = useRef<View>(null);
+  const { isLoggedIn } = useAuth();
   const photo = photos.find((p) => p.id === id);
 
   if (!photo) {
@@ -139,7 +141,7 @@ export default function PhotoDetailScreen() {
     setIsUploading(true);
     setUploadStatus("Verifying…");
     try {
-      await uploadPhoto(photo, (status) => setUploadStatus(status));
+      await uploadPhoto(photo, (status) => setUploadStatus(status), isLoggedIn);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Upload Complete", `${photo.serialNumber} uploaded successfully.`);
     } catch (err: unknown) {

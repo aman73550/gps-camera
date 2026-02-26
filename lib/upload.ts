@@ -35,7 +35,10 @@ export async function compressForUpload(
   return result;
 }
 
-export async function runVerificationChain(photo: PhotoRecord): Promise<void> {
+export async function runVerificationChain(
+  photo: PhotoRecord,
+  isLoggedIn = false,
+): Promise<void> {
   // ── Lock 1: Path check — must be inside app's private directory ──────────
   const photosDir = getPhotosDirectory();
   if (!photo.uri.startsWith(photosDir)) {
@@ -59,19 +62,22 @@ export async function runVerificationChain(photo: PhotoRecord): Promise<void> {
     );
   }
 
-  // ── Lock 4: Tier check — guest upload limit ───────────────────────────────
-  const currentUploads = await getUploadCount();
-  if (currentUploads >= MAX_GUEST_UPLOADS) {
-    throw new Error(GUEST_LIMIT_ERROR);
+  // ── Lock 4: Tier check — skipped for logged-in users ─────────────────────
+  if (!isLoggedIn) {
+    const currentUploads = await getUploadCount();
+    if (currentUploads >= MAX_GUEST_UPLOADS) {
+      throw new Error(GUEST_LIMIT_ERROR);
+    }
   }
 }
 
 export async function uploadPhoto(
   photo: PhotoRecord,
   onProgress?: (status: string) => void,
+  isLoggedIn = false,
 ): Promise<void> {
   onProgress?.("Verifying…");
-  await runVerificationChain(photo);
+  await runVerificationChain(photo, isLoggedIn);
 
   onProgress?.("Compressing…");
   const compressed = await compressForUpload(photo.uri);
@@ -106,6 +112,7 @@ export async function uploadPhoto(
 export async function uploadPhotoBatch(
   photos: PhotoRecord[],
   onProgress?: (current: number, total: number, status: string) => void,
+  isLoggedIn = false,
 ): Promise<{ succeeded: string[]; failed: { serial: string; error: string }[] }> {
   const succeeded: string[] = [];
   const failed: { serial: string; error: string }[] = [];
@@ -113,8 +120,10 @@ export async function uploadPhotoBatch(
   for (let i = 0; i < photos.length; i++) {
     const photo = photos[i];
     try {
-      await uploadPhoto(photo, (status) =>
-        onProgress?.(i + 1, photos.length, `${photo.serialNumber}: ${status}`),
+      await uploadPhoto(
+        photo,
+        (status) => onProgress?.(i + 1, photos.length, `${photo.serialNumber}: ${status}`),
+        isLoggedIn,
       );
       succeeded.push(photo.serialNumber);
     } catch (err: unknown) {

@@ -20,7 +20,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
+import { LoginModal } from "@/components/LoginModal";
 import { router } from "expo-router";
 import { FadeInView } from "@/components/FadeInView";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
@@ -60,6 +62,8 @@ export default function CameraTab() {
   const [facing, setFacing] = useState<"front" | "back">("back");
 
   const { addPhoto, photos, uploadCount, maxGuestUploads } = usePhotos();
+  const { isLoggedIn, user, logout } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const photoCount = photos.length;
 
   useEffect(() => {
@@ -379,16 +383,54 @@ export default function CameraTab() {
           facing={facing}
         />
 
-        {/* Top overlay bar — GPS LIVE, count */}
+        {/* Top overlay bar — GPS LIVE, count, auth */}
         <View style={styles.topBar}>
           <View style={styles.gpsLiveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.gpsLiveText}>GPS LIVE</Text>
           </View>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>
-              {photoCount} {photoCount === 1 ? "photo" : "photos"}
-            </Text>
+          <View style={styles.topRight}>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>
+                {photoCount} {photoCount === 1 ? "photo" : "photos"}
+              </Text>
+            </View>
+            {/* Login / Profile button */}
+            <Pressable
+              style={({ pressed }) => [styles.authOverlayBtn, { opacity: pressed ? 0.75 : 1 }]}
+              onPress={() => {
+                if (isLoggedIn) {
+                  Alert.alert(
+                    `Hi, ${user?.name}`,
+                    "You have unlimited uploads.",
+                    [
+                      { text: "Sign Out", style: "destructive", onPress: logout },
+                      { text: "OK", style: "cancel" },
+                    ],
+                  );
+                } else {
+                  setShowLoginModal(true);
+                }
+              }}
+            >
+              {isLoggedIn ? (
+                <>
+                  <View style={styles.authAvatarSmall}>
+                    <Text style={styles.authAvatarSmallText}>
+                      {(user?.name ?? "U")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.authGreenDot} />
+                </>
+              ) : (
+                <>
+                  <Ionicons name="person-outline" size={18} color="#FFF" />
+                  <View style={styles.authLockDot}>
+                    <Ionicons name="lock-closed" size={7} color="#FFF" />
+                  </View>
+                </>
+              )}
+            </Pressable>
           </View>
         </View>
 
@@ -409,6 +451,8 @@ export default function CameraTab() {
           timestamp={Date.now()}
         />
       </View>
+
+      <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* ── Black Control Panel ───────────────────────────────────── */}
       <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
@@ -569,6 +613,52 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  authOverlayBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  authAvatarSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.light.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  authAvatarSmallText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  authGreenDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#34C759",
+    borderWidth: 1.5,
+    borderColor: "#FFF",
+  },
+  authLockDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "rgba(255,149,0,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#FFF",
   },
   countBadge: {
     backgroundColor: "rgba(0,0,0,0.55)",
