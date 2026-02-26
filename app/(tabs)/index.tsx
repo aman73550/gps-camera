@@ -267,7 +267,7 @@ export default function CameraTab() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, addPhoto]);
+  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, nearPlace, addPhoto]);
 
   const toggleCamera = useCallback(() => {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
@@ -435,7 +435,7 @@ export default function CameraTab() {
                   return;
                 }
               }
-              router.push("/(tabs)/files");
+              router.navigate("/(tabs)/files");
             }}
           >
             {lastCapturedUri ? (
