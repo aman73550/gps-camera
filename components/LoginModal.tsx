@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { makeRedirectUri } from "expo-auth-session";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
@@ -54,17 +55,19 @@ export function LoginModal({ visible, onClose }: Props) {
 
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
+  const redirectUri = makeRedirectUri({ useProxy: true });
+
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: googleClientId,
-    iosClientId: googleClientId,
-    androidClientId: googleClientId,
+    redirectUri,
   });
 
   useEffect(() => {
     if (googleResponse?.type === "success") {
       handleGoogleSuccess(googleResponse.authentication?.accessToken ?? "");
     } else if (googleResponse?.type === "error") {
-      setError("Google sign-in failed. Make sure the redirect URI is added in Google Cloud Console: https://auth.expo.io/@Aman73550/gps-camera");
+      const desc = (googleResponse as any)?.error?.description ?? (googleResponse as any)?.error ?? "";
+      setError(`Google sign-in failed. ${desc ? `Error: ${desc}` : `Add this URI in Google Cloud Console → Authorized redirect URIs:\n${redirectUri}`}`);
     }
   }, [googleResponse]);
 
