@@ -29,13 +29,13 @@ export function PhotoOverlay({
   timestamp,
 }: PhotoOverlayProps) {
   const date = new Date(timestamp);
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const months = ["January", "February", "March", "April", "May", "June", "July",
-    "August", "September", "October", "November", "December"];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
+    "Aug", "Sep", "Oct", "Nov", "Dec"];
   const h = String(date.getHours()).padStart(2, "0");
   const m = String(date.getMinutes()).padStart(2, "0");
   const s = String(date.getSeconds()).padStart(2, "0");
-  const dateStr = `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} ${h}:${m}:${s}`;
+  const dateStr = `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}  ${h}:${m}:${s}`;
   const altStr = altitude > 0 ? `${Math.round(altitude)} m` : "— m";
 
   return (
@@ -53,7 +53,7 @@ export function PhotoOverlay({
           <View style={styles.qrWrapper}>
             <QRCodeView
               value={serialNumber || "GPS-CAMERA"}
-              size={100}
+              size={96}
               backgroundColor="#1a1a1a"
               color="#FFFFFF"
             />
@@ -67,10 +67,10 @@ export function PhotoOverlay({
 
         {/* Right: Geo details */}
         <View style={styles.rightSection}>
-          <Text style={styles.locationTitle} numberOfLines={2}>
+          <Text style={styles.locationTitle} numberOfLines={1}>
             {locationName || "Unknown Location"}
           </Text>
-          <Text style={styles.addressText} numberOfLines={2}>
+          <Text style={styles.addressText} numberOfLines={1}>
             {address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`}
           </Text>
           <Text style={styles.plusCodeText} numberOfLines={1}>
@@ -83,19 +83,15 @@ export function PhotoOverlay({
           ) : null}
           <Text style={styles.dateText} numberOfLines={1}>{dateStr}</Text>
 
+          {/* Watermark + meta in one row */}
           <View style={styles.bottomRow}>
-            <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="weather-sunny" size={13} color="rgba(255,255,255,0.75)" />
-              <Text style={styles.metaText}>—</Text>
+            <View style={styles.watermarkTag}>
+              <MaterialCommunityIcons name="shield-check" size={11} color="rgba(255,210,60,0.95)" />
+              <Text style={styles.watermarkText}>GPS Camera · Verified</Text>
             </View>
-            <View style={styles.metaDot} />
+            <View style={styles.metaSpacer} />
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="water-percent" size={13} color="rgba(255,255,255,0.75)" />
-              <Text style={styles.metaText}>—</Text>
-            </View>
-            <View style={styles.metaDot} />
-            <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="image-filter-hdr" size={13} color="rgba(255,255,255,0.75)" />
+              <MaterialCommunityIcons name="image-filter-hdr" size={12} color="rgba(255,255,255,0.65)" />
               <Text style={styles.metaText}>{altStr}</Text>
             </View>
           </View>
@@ -116,7 +112,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(15, 15, 15, 0.88)",
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     gap: 7,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,230,100,0.3)",
@@ -132,15 +128,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "rgba(15, 15, 15, 0.92)",
     paddingHorizontal: 11,
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: "center",
     gap: 11,
   },
   leftSection: {
-    width: 122,
+    width: 118,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 5,
   },
   qrWrapper: {
     padding: 4,
@@ -163,25 +159,24 @@ const styles = StyleSheet.create({
   rightSection: {
     flex: 1,
     justifyContent: "center",
-    gap: 3.5,
+    gap: 2.5,
   },
   locationTitle: {
     color: "#FFFFFF",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
-    lineHeight: 20,
+    lineHeight: 18,
   },
   addressText: {
     color: "rgba(255,255,255,0.90)",
     fontSize: 12.5,
     fontFamily: "Inter_400Regular",
-    lineHeight: 17,
+    lineHeight: 16,
   },
   plusCodeText: {
     color: "rgba(255,255,255,0.80)",
     fontSize: 12,
     fontFamily: "Inter_500Medium",
-    marginTop: 1,
   },
   nearText: {
     color: "rgba(180,230,255,0.95)",
@@ -196,8 +191,22 @@ const styles = StyleSheet.create({
   bottomRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
-    gap: 7,
+    marginTop: 2,
+    gap: 6,
+  },
+  watermarkTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  watermarkText: {
+    color: "rgba(255,210,60,0.90)",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.4,
+  },
+  metaSpacer: {
+    flex: 1,
   },
   metaItem: {
     flexDirection: "row",
@@ -205,14 +214,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    color: "rgba(255,255,255,0.80)",
+    color: "rgba(255,255,255,0.70)",
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(255,255,255,0.35)",
   },
 });
