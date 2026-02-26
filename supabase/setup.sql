@@ -42,6 +42,12 @@ CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON public.uploads(created_at D
 CREATE INDEX IF NOT EXISTS idx_uploads_is_guest   ON public.uploads(is_guest);
 CREATE INDEX IF NOT EXISTS idx_uploads_serial     ON public.uploads(serial_number);
 
+-- Soft-delete columns (added later — safe to re-run)
+ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS pending_delete       BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS delete_requested_at  TIMESTAMPTZ;
+ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS delete_requested_by  TEXT;
+CREATE INDEX IF NOT EXISTS idx_uploads_pending_delete ON public.uploads(pending_delete) WHERE pending_delete = TRUE;
+
 ALTER TABLE public.uploads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all" ON public.uploads;
 CREATE POLICY "anon_all" ON public.uploads FOR ALL USING (true) WITH CHECK (true);

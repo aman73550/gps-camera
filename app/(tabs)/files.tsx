@@ -77,13 +77,15 @@ function PhotoGridItem({ item, isSelectMode, isSelected, onPress, onLongPress }:
           transition={150}
         />
         {!isSelectMode && (
-          <View style={styles.syncBadge} pointerEvents="none">
-            <Ionicons
-              name={item.uploadedAt ? "cloud-done" : "cloud-outline"}
-              size={15}
-              color={item.uploadedAt ? "#34C759" : "rgba(255,255,255,0.75)"}
-            />
-          </View>
+          item.uploadedAt ? (
+            <View style={styles.uploadedBadge} pointerEvents="none">
+              <Ionicons name="checkmark" size={11} color="#FFF" />
+            </View>
+          ) : (
+            <View style={styles.syncBadge} pointerEvents="none">
+              <Ionicons name="cloud-outline" size={15} color="rgba(255,255,255,0.75)" />
+            </View>
+          )
         )}
         {isSelectMode && (
           <View style={[styles.selectionOverlay, isSelected && styles.selectionOverlayActive]}>
@@ -293,27 +295,49 @@ export default function FilesTab() {
     }
   }, [selectedPhotos, exitSelectMode]);
 
+  const requestServerDeletion = useCallback(
+    async (photos: typeof selectedPhotos) => {
+      const uploaded = photos.filter((p) => p.uploadedAt && p.serialNumber);
+      if (!uploaded.length) return;
+      await Promise.allSettled(
+        uploaded.map(async (p) => {
+          try {
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (user?.phone) headers["x-user-phone"] = user.phone;
+            await fetch("/api/user/request-delete", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ serialNumber: p.serialNumber }),
+            });
+          } catch {}
+        }),
+      );
+    },
+    [user],
+  );
+
   const handleBatchDelete = useCallback(() => {
     if (selectedPhotos.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    Alert.alert(
-      "Delete Photos",
-      `Delete ${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? "s" : ""}? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setIsBatchProcessing(true);
-            await removePhotos(selectedPhotos.map((p) => p.id));
-            exitSelectMode();
-            setIsBatchProcessing(false);
-          },
+    const uploadedCount = selectedPhotos.filter((p) => p.uploadedAt).length;
+    const msg = uploadedCount > 0
+      ? `Delete ${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? "s" : ""}? ${uploadedCount} uploaded photo${uploadedCount !== 1 ? "s" : ""} will be flagged for server deletion (pending admin approval).`
+      : `Delete ${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? "s" : ""}? This cannot be undone.`;
+    Alert.alert("Delete Photos", msg, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setIsBatchProcessing(true);
+          await requestServerDeletion(selectedPhotos);
+          await removePhotos(selectedPhotos.map((p) => p.id));
+          exitSelectMode();
+          setIsBatchProcessing(false);
         },
-      ],
-    );
-  }, [selectedPhotos, removePhotos, exitSelectMode]);
+      },
+    ]);
+  }, [selectedPhotos, removePhotos, exitSelectMode, requestServerDeletion]);
 
   if (isScanning) {
     return (
@@ -804,6 +828,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  uploadedBadge: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#34C759",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.9)",
   },
   paginationFooter: {
     flexDirection: "row",

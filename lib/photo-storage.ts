@@ -19,6 +19,7 @@ export interface PhotoRecord {
   uploadedAt?: number;
   pendingUpload?: boolean;
   deletedAt?: number;
+  serverDeleteRequested?: boolean;
 }
 
 const PHOTOS_KEY = "@gps_camera_photos";
@@ -190,6 +191,17 @@ export async function markPhotoAsUploaded(id: string): Promise<void> {
     const idx = all.findIndex((p) => p.id === id);
     if (idx !== -1) {
       all[idx] = { ...all[idx], uploadedAt: Date.now(), pendingUpload: false };
+      await _writeAll(all);
+    }
+  } catch {}
+}
+
+export async function markServerDeleteRequested(id: string): Promise<void> {
+  try {
+    const all = await _readAllRaw();
+    const idx = all.findIndex((p) => p.id === id);
+    if (idx !== -1) {
+      all[idx] = { ...all[idx], serverDeleteRequested: true };
       await _writeAll(all);
     }
   } catch {}

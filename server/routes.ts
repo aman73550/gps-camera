@@ -12,6 +12,10 @@ import {
   getAppSettings,
   updateAppSettings,
   runAutoCleanup,
+  requestUploadDelete,
+  getPendingDeletions,
+  confirmUploadDeletion,
+  rejectUploadDeletion,
   UploadRecord,
 } from "./supabase";
 
@@ -431,6 +435,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, deleted });
     },
   );
+
+  // ── User: request deletion of an uploaded photo ─────────────
+  app.post("/api/user/request-delete", async (req: Request, res: Response) => {
+    try {
+      const { serialNumber } = req.body as { serialNumber?: string };
+      if (!serialNumber) return res.status(400).json({ error: "serialNumber required" });
+      const userPhone = req.headers["x-user-phone"] as string | undefined;
+      const ok = await requestUploadDelete(serialNumber, userPhone || null);
+      return res.json({ success: ok });
+    } catch (err) {
+      console.error("request-delete error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  // ── Admin: list pending deletions ───────────────────────────
+  app.get("/api/admin/pending-deletions", adminAuth, async (req: Request, res: Response) => {
+    const page = Math.max(1, parseInt((req.query.page as string) || "1"));
+    const limit = Math.min(50, parseInt((req.query.limit as string) || "15"));
+    const result = await getPendingDeletions(page, limit);
+    return res.json({ ...result, page, limit });
+  });
+
+  // ── Admin: confirm deletion (deletes file + db row) ─────────
+  app.post("/api/admin/deletions/confirm", adminAuth, async (req: Request, res: Response) => {
+    const { serialNumber } = req.body as { serialNumber?: string };
+    if (!serialNumber) return res.status(400).json({ error: "serialNumber required" });
+    const ok = await confirmUploadDeletion(serialNumber, uploadsDir);
+    return res.json({ success: ok });
+  });
+
+  // ── Admin: reject deletion (clears pending flag) ────────────
+  app.post("/api/admin/deletions/reject", adminAuth, async (req: Request, res: Response) => {
+    const { serialNumber } = req.body as { serialNumber?: string };
+    if (!serialNumber) return res.status(400).json({ error: "serialNumber required" });
+    const ok = await rejectUploadDeletion(serialNumber);
+    return res.json({ success: ok });
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -167,6 +167,72 @@ export async function runAutoCleanup(): Promise<number> {
   return ids.length;
 }
 
+export async function requestUploadDelete(
+  serialNumber: string,
+  requestedBy: string | null,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("uploads")
+    .update({
+      pending_delete: true,
+      delete_requested_at: new Date().toISOString(),
+      delete_requested_by: requestedBy || "user",
+    })
+    .eq("serial_number", serialNumber);
+  if (error) { console.error("requestUploadDelete error:", error.message); return false; }
+  return true;
+}
+
+export async function getPendingDeletions(
+  page: number,
+  limit: number,
+): Promise<{ data: any[]; total: number }> {
+  if (!supabase) return { data: [], total: 0 };
+  const offset = (page - 1) * limit;
+  const { data, count } = await supabase
+    .from("uploads")
+    .select("*", { count: "exact" })
+    .eq("pending_delete", true)
+    .order("delete_requested_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+  return { data: data || [], total: count || 0 };
+}
+
+export async function confirmUploadDeletion(
+  serialNumber: string,
+  uploadsDir: string,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { data } = await supabase
+    .from("uploads")
+    .select("file_path")
+    .eq("serial_number", serialNumber)
+    .single();
+  if (data?.file_path) {
+    const fs = require("fs");
+    const path = require("path");
+    const filePath = path.join(uploadsDir, data.file_path);
+    try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
+  }
+  const { error } = await supabase
+    .from("uploads")
+    .delete()
+    .eq("serial_number", serialNumber);
+  if (error) { console.error("confirmUploadDeletion error:", error.message); return false; }
+  return true;
+}
+
+export async function rejectUploadDeletion(serialNumber: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("uploads")
+    .update({ pending_delete: false, delete_requested_at: null, delete_requested_by: null })
+    .eq("serial_number", serialNumber);
+  if (error) { console.error("rejectUploadDeletion error:", error.message); return false; }
+  return true;
+}
+
 export async function checkSupabaseConnection(): Promise<boolean> {
   if (!supabase) {
     console.log("ℹ️  Supabase not configured (no SUPABASE_URL/SUPABASE_ANON_KEY)");

@@ -259,6 +259,10 @@
     <div class="nav-item" onclick="showPage('uploads')">
       <span class="nav-icon">📸</span> Uploads
     </div>
+    <div class="nav-item" onclick="showPage('deletions')">
+      <span class="nav-icon">🗑️</span> Deletions
+      <span id="del-badge" style="display:none;margin-left:auto;background:#FF5252;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700"></span>
+    </div>
     <div class="nav-item" onclick="showPage('settings')">
       <span class="nav-icon">⚙️</span> Settings
     </div>
@@ -371,6 +375,39 @@
       </div>
     </div>
 
+    <!-- DELETIONS -->
+    <div id="page-deletions" class="page">
+      <h2 class="page-title">Deletion Requests</h2>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Pending Server Deletions</h3>
+          <span id="deletions-count" style="font-size:13px;color:#888"></span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Serial</th>
+                <th>User</th>
+                <th>Requested</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="deletions-tbody">
+              <tr class="loading-row"><td colspan="4"><span class="loader"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span id="deletions-info">—</span>
+          <div class="pag-btns">
+            <button class="pag-btn" id="del-btn-prev" onclick="changeDeletionsPage(-1)" disabled>← Prev</button>
+            <button class="pag-btn" id="del-btn-next" onclick="changeDeletionsPage(1)">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="page-settings" class="page">
       <h2 class="page-title">Settings</h2>
@@ -470,6 +507,10 @@
   <button class="mob-nav-item" id="mobnav-uploads" onclick="showPage('uploads')">
     <span class="mob-nav-icon">📸</span>Uploads
   </button>
+  <button class="mob-nav-item" id="mobnav-deletions" onclick="showPage('deletions')" style="position:relative">
+    <span class="mob-nav-icon">🗑️</span>Deletions
+    <span id="mob-del-badge" style="display:none;position:absolute;top:4px;right:calc(50% - 20px);background:#FF5252;color:#fff;border-radius:8px;padding:0 5px;font-size:10px;font-weight:700;line-height:16px"></span>
+  </button>
   <button class="mob-nav-item" id="mobnav-settings" onclick="showPage('settings')">
     <span class="mob-nav-icon">⚙️</span>Settings
   </button>
@@ -480,10 +521,12 @@ let adminUsername = localStorage.getItem('admin_username') || '';
 let adminPassword = localStorage.getItem('admin_password') || '';
 let uploadsPage = 1;
 let uploadsTotalPages = 1;
+let deletionsPage = 1;
+let deletionsTotalPages = 1;
 let chartInstance = null;
 let currentPage = 'dashboard';
 
-const PAGE_TITLES = { dashboard: 'Dashboard', users: 'Users', uploads: 'Uploads', settings: 'Settings' };
+const PAGE_TITLES = { dashboard: 'Dashboard', users: 'Users', uploads: 'Uploads', deletions: 'Deletion Requests', settings: 'Settings' };
 
 function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers };
@@ -531,6 +574,7 @@ function showPage(name) {
   if (titleEl) titleEl.textContent = PAGE_TITLES[name] || name;
   if (name === 'users') loadUsers();
   if (name === 'uploads') { uploadsPage = 1; loadUploads(); }
+  if (name === 'deletions') { deletionsPage = 1; loadDeletions(); }
   if (name === 'settings') loadSettings();
   window.scrollTo(0, 0);
 }
@@ -640,6 +684,81 @@ function changePage(dir) {
   loadUploads();
 }
 
+async function loadDeletions() {
+  document.getElementById('deletions-tbody').innerHTML =
+    '<tr class="loading-row"><td colspan="4"><span class="loader"></span></td></tr>';
+  const r = await api(`/api/admin/pending-deletions?page=${deletionsPage}&limit=15`);
+  if (!r.ok) return;
+  const { data, total, page, limit } = await r.json();
+  deletionsTotalPages = Math.ceil(total / limit) || 1;
+  const start = (page - 1) * limit + 1;
+  const end = Math.min(page * limit, total);
+  document.getElementById('deletions-count').textContent = total ? `${total} pending` : '0 pending';
+  document.getElementById('deletions-info').textContent = total ? `${start}–${end} of ${total}` : '0 requests';
+  document.getElementById('del-btn-prev').disabled = page <= 1;
+  document.getElementById('del-btn-next').disabled = page >= deletionsTotalPages;
+  const badge = total > 0 ? String(total) : '';
+  const delBadge = document.getElementById('del-badge');
+  const mobDelBadge = document.getElementById('mob-del-badge');
+  if (delBadge) { delBadge.textContent = badge; delBadge.style.display = badge ? '' : 'none'; }
+  if (mobDelBadge) { mobDelBadge.textContent = badge; mobDelBadge.style.display = badge ? '' : 'none'; }
+  if (!data.length) {
+    document.getElementById('deletions-tbody').innerHTML =
+      '<tr class="empty-row"><td colspan="4">No pending deletion requests</td></tr>';
+    return;
+  }
+  document.getElementById('deletions-tbody').innerHTML = data.map(d => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px">${d.serial_number}</td>
+      <td style="font-size:12px">${d.is_guest
+        ? '<span class="badge badge-guest">Guest</span>'
+        : `<span style="font-family:monospace">${d.delete_requested_by || d.user_phone || '—'}</span>`
+      }</td>
+      <td style="font-size:12px;white-space:nowrap">${d.delete_requested_at
+        ? new Date(d.delete_requested_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
+        : '—'
+      }</td>
+      <td style="white-space:nowrap">
+        <button class="tier-btn tier-btn-downgrade"
+          onclick="confirmDeletion('${d.serial_number}',this)"
+          style="background:#FF5252;color:#fff;border-color:#FF5252;margin-right:4px">
+          ✓ Confirm
+        </button>
+        <button class="tier-btn"
+          onclick="rejectDeletion('${d.serial_number}',this)"
+          style="background:#E8F5E9;color:#388E3C;border-color:#A5D6A7">
+          ✕ Reject
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function changeDeletionsPage(dir) {
+  deletionsPage = Math.max(1, Math.min(deletionsTotalPages, deletionsPage + dir));
+  loadDeletions();
+}
+
+async function confirmDeletion(serial, btn) {
+  if (!confirm(`Permanently delete server photo ${serial}? This cannot be undone.`)) return;
+  btn.disabled = true; btn.textContent = '…';
+  const r = await api('/api/admin/deletions/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ serialNumber: serial })
+  });
+  if (r.ok) loadDeletions();
+  else { btn.disabled = false; btn.textContent = 'Error'; }
+}
+
+async function rejectDeletion(serial, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  const r = await api('/api/admin/deletions/reject', {
+    method: 'POST',
+    body: JSON.stringify({ serialNumber: serial })
+  });
+  if (r.ok) loadDeletions();
+  else { btn.disabled = false; btn.textContent = 'Error'; }
+}
+
 async function loadSettings() {
   const r = await api('/api/admin/settings');
   if (!r.ok) return;
@@ -716,7 +835,22 @@ async function runCleanup() {
   if (deleted > 0) loadDashboard();
 }
 
-async function initApp() { loadDashboard(); }
+async function initApp() {
+  loadDashboard();
+  // Pre-load deletions count so the badge shows on the nav immediately
+  (async () => {
+    try {
+      const r = await api('/api/admin/pending-deletions?page=1&limit=1');
+      if (!r.ok) return;
+      const { total } = await r.json();
+      const badge = total > 0 ? String(total) : '';
+      const delBadge = document.getElementById('del-badge');
+      const mobDelBadge = document.getElementById('mob-del-badge');
+      if (delBadge) { delBadge.textContent = badge; delBadge.style.display = badge ? '' : 'none'; }
+      if (mobDelBadge) { mobDelBadge.textContent = badge; mobDelBadge.style.display = badge ? '' : 'none'; }
+    } catch {}
+  })();
+}
 
 // Init
 (async () => {
