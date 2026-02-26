@@ -35,7 +35,7 @@ import { PhotoRecord } from "@/lib/photo-storage";
 import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
 import { LoginModal } from "@/components/LoginModal";
-import { GuestLimitModal } from "@/components/GuestLimitModal";
+import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
 
 const M3_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 
@@ -113,7 +113,8 @@ export default function FilesTab() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [batchStatus, setBatchStatus] = useState("");
-  const [showGuestLimitModal, setShowGuestLimitModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitType, setLimitType] = useState<LimitType>("guest");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [visibleCount, setVisibleCount] = useState(20);
@@ -223,11 +224,14 @@ export default function FilesTab() {
       if (networkHit) {
         Alert.alert("Offline", `${succeeded.length > 0 ? `${succeeded.length} uploaded. ` : ""}${failed.filter(f => f.error === NETWORK_ERROR).length} photo(s) queued for when you reconnect.`);
       } else if (guestLimitHit) {
-        setShowGuestLimitModal(true);
+        setLimitType("guest");
+        setShowLimitModal(true);
       } else if (dailyLimitHit) {
-        Alert.alert("Daily Limit Reached", `Uploaded ${succeeded.length} photo(s). Standard accounts allow 50 uploads per day. Limit resets at midnight.`);
+        setLimitType("daily");
+        setShowLimitModal(true);
       } else if (monthlyLimitHit) {
-        Alert.alert("Monthly Limit Reached", `Uploaded ${succeeded.length} photo(s). Standard accounts allow 1,000 uploads per month. Upgrade to Pro for unlimited.`);
+        setLimitType("monthly");
+        setShowLimitModal(true);
       } else if (failed.length === 0) {
         Alert.alert("Upload Complete", `${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded successfully.`);
       } else {
@@ -558,14 +562,15 @@ export default function FilesTab() {
         onClose={() => setShowLoginModal(false)}
       />
       <GuestLimitModal
-        visible={showGuestLimitModal}
+        visible={showLimitModal}
+        type={limitType}
         used={uploadCount}
         max={maxGuestUploads}
         onLogin={() => {
-          setShowGuestLimitModal(false);
+          setShowLimitModal(false);
           setShowLoginModal(true);
         }}
-        onDismiss={() => setShowGuestLimitModal(false)}
+        onDismiss={() => setShowLimitModal(false)}
       />
     </FadeInView>
   );

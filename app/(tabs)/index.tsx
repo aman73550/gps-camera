@@ -24,6 +24,7 @@ import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { LoginModal } from "@/components/LoginModal";
+import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
 import { FadeInView } from "@/components/FadeInView";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -109,6 +110,8 @@ export default function CameraTab() {
   const { addPhoto, photos, uploadCount, maxGuestUploads } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitType, setLimitType] = useState<LimitType>("guest");
   const photoCount = photos.length;
 
   useEffect(() => {
@@ -246,6 +249,12 @@ export default function CameraTab() {
   const capturePhoto = useCallback(async () => {
     if (!cameraRef.current || isCapturing) return;
 
+    if (!isLoggedIn && uploadCount >= maxGuestUploads) {
+      setLimitType("guest");
+      setShowLimitModal(true);
+      return;
+    }
+
     setIsCapturing(true);
 
     try {
@@ -341,7 +350,7 @@ export default function CameraTab() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, nearPlace, note, addPhoto]);
+  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, nearPlace, note, addPhoto, isLoggedIn, uploadCount, maxGuestUploads]);
 
   const cycleFlash = useCallback(() => {
     setFlash((prev) => {
@@ -574,6 +583,17 @@ export default function CameraTab() {
         </View>
 
         <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
+        <GuestLimitModal
+          visible={showLimitModal}
+          type={limitType}
+          used={uploadCount}
+          max={maxGuestUploads}
+          onLogin={() => {
+            setShowLimitModal(false);
+            setShowLoginModal(true);
+          }}
+          onDismiss={() => setShowLimitModal(false)}
+        />
 
         {/* ── Note Input (expandable) ─────────────────────────────── */}
         {showNoteInput && (

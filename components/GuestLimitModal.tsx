@@ -5,20 +5,60 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 
+export type LimitType = "guest" | "daily" | "monthly";
+
 interface Props {
   visible: boolean;
-  used: number;
-  max: number;
+  type: LimitType;
+  used?: number;
+  max?: number;
   onLogin: () => void;
   onDismiss: () => void;
 }
 
-export function GuestLimitModal({ visible, used, max, onLogin, onDismiss }: Props) {
+function getLimitContent(type: LimitType) {
+  switch (type) {
+    case "daily":
+      return {
+        icon: "time-outline" as const,
+        iconColor: "#007AFF",
+        iconBg: "#E3F0FF",
+        title: "Daily Limit Reached",
+        desc: "Standard accounts can upload 50 photos per day.\nSign in with a Pro account for unlimited daily uploads.",
+        btnText: "Sign In / Upgrade to Pro",
+        btnIcon: "star-outline" as const,
+      };
+    case "monthly":
+      return {
+        icon: "calendar-outline" as const,
+        iconColor: "#AF52DE",
+        iconBg: "#F3E8FF",
+        title: "Monthly Limit Reached",
+        desc: "Standard accounts can upload 1,000 photos per month.\nSign in with a Pro account for unlimited uploads.",
+        btnText: "Sign In / Upgrade to Pro",
+        btnIcon: "star-outline" as const,
+      };
+    default:
+      return {
+        icon: "cloud-upload-outline" as const,
+        iconColor: "#FF9500",
+        iconBg: "#FFF3E0",
+        title: "Upload Limit Reached",
+        desc: "You've used all your free guest uploads.\nSign in to get unlimited access.",
+        btnText: "Sign In for Unlimited Access",
+        btnIcon: "log-in-outline" as const,
+      };
+  }
+}
+
+export function GuestLimitModal({ visible, type, used, max, onLogin, onDismiss }: Props) {
+  const content = getLimitContent(type);
+  const showProgress = type === "guest" && used !== undefined && max !== undefined;
+
   return (
     <Modal
       visible={visible}
@@ -29,51 +69,49 @@ export function GuestLimitModal({ visible, used, max, onLogin, onDismiss }: Prop
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.iconWrap}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="cloud-upload-outline" size={36} color="#FF9500" />
+            <View style={[styles.iconCircle, { backgroundColor: content.iconBg }]}>
+              <Ionicons name={content.icon} size={36} color={content.iconColor} />
             </View>
-            <View style={styles.lockBadge}>
+            <View style={[styles.lockBadge, { backgroundColor: content.iconColor }]}>
               <Ionicons name="lock-closed" size={12} color="#FFF" />
             </View>
           </View>
 
-          <Text style={styles.title}>Upload Limit Reached</Text>
-          <Text style={styles.desc}>
-            You've used all{" "}
-            <Text style={styles.highlight}>{max} free guest uploads</Text>.
-            {"\n"}Sign in to upload without any limits.
-          </Text>
+          <Text style={styles.title}>{content.title}</Text>
+          <Text style={styles.desc}>{content.desc}</Text>
 
-          <View style={styles.progressWrap}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${Math.min((used / max) * 100, 100)}%` },
-                ]}
-              />
+          {showProgress && (
+            <View style={styles.progressWrap}>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.min(((used ?? 0) / (max ?? 1)) * 100, 100)}%`,
+                      backgroundColor: content.iconColor,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressLabel}>
+                {used}/{max} uploads used
+              </Text>
             </View>
-            <Text style={styles.progressLabel}>
-              {used}/{max} uploads used
-            </Text>
-          </View>
+          )}
 
           <Pressable
             style={({ pressed }) => [
               styles.loginBtn,
-              { opacity: pressed ? 0.82 : 1 },
+              { opacity: pressed ? 0.82 : 1, backgroundColor: content.iconColor },
             ]}
             onPress={onLogin}
           >
-            <Ionicons name="log-in-outline" size={20} color="#FFF" />
-            <Text style={styles.loginBtnText}>Sign In for Unlimited Access</Text>
+            <Ionicons name={content.btnIcon} size={20} color="#FFF" />
+            <Text style={styles.loginBtnText}>{content.btnText}</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [
-              styles.laterBtn,
-              { opacity: pressed ? 0.6 : 1 },
-            ]}
+            style={({ pressed }) => [styles.laterBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={onDismiss}
           >
             <Text style={styles.laterText}>Maybe Later</Text>
@@ -113,7 +151,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#FFF3E0",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -124,7 +161,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#FF9500",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -145,10 +181,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 20,
   },
-  highlight: {
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.onSurface,
-  },
   progressWrap: {
     width: "100%",
     marginBottom: 24,
@@ -164,7 +196,6 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "#FF9500",
     borderRadius: 3,
   },
   progressLabel: {
@@ -173,7 +204,6 @@ const styles = StyleSheet.create({
     color: Colors.light.textTertiary,
   },
   loginBtn: {
-    backgroundColor: Colors.light.primary,
     borderRadius: 16,
     paddingVertical: 15,
     paddingHorizontal: 24,
