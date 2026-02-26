@@ -12,6 +12,7 @@ export interface PhotoRecord {
   address: string;
   locationName: string;
   plusCode: string;
+  nearPlace?: string;
   timestamp: number;
   compressed: boolean;
 }

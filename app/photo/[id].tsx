@@ -33,6 +33,7 @@ function PhotoDetailOverlay({ photo }: { photo: PhotoRecord }) {
       address={photo.address}
       locationName={photo.locationName ?? photo.address}
       plusCode={photo.plusCode ?? ""}
+      nearPlace={photo.nearPlace ?? ""}
       serialNumber={photo.serialNumber}
       timestamp={photo.timestamp}
     />

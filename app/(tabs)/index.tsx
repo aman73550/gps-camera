@@ -53,6 +53,7 @@ export default function CameraTab() {
   const [address, setAddress] = useState("Fetching location...");
   const [locationName, setLocationName] = useState("Unknown Location");
   const [plusCode, setPlusCode] = useState("");
+  const [nearPlace, setNearPlace] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
@@ -75,6 +76,7 @@ export default function CameraTab() {
       setAddress(cached.address);
       setLocationName(cached.locationName);
       setPlusCode(cached.plusCode);
+      if (cached.nearPlace) setNearPlace(cached.nearPlace);
     });
   }, []);
 
@@ -129,14 +131,28 @@ export default function CameraTab() {
             place.country,
           ].filter(Boolean);
           const addr = addrParts.join(", ") || "Unknown location";
+
+          const rawName = place.name ?? "";
+          const nearParts: string[] = [];
+          if (rawName && !/^\d+$/.test(rawName) && rawName !== place.street) {
+            nearParts.push(rawName);
+          }
+          if (place.district && place.district !== (place.city || place.district)) {
+            nearParts.push(place.district);
+          } else if (place.subregion && place.subregion !== place.region) {
+            nearParts.push(place.subregion);
+          }
+          const near = nearParts.join(", ") || place.district || place.subregion || "";
+
           setLocationName(name);
           setAddress(addr);
-          setCachedLocation({ latitude: lat, longitude: lon, altitude: alt, address: addr, locationName: name, plusCode: plus, timestamp: Date.now() });
+          setNearPlace(near);
+          setCachedLocation({ latitude: lat, longitude: lon, altitude: alt, address: addr, locationName: name, plusCode: plus, nearPlace: near, timestamp: Date.now() });
         }
       } catch {
         const fallback = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         setAddress(fallback);
-        setCachedLocation({ latitude: lat, longitude: lon, altitude: alt, address: fallback, locationName: "GPS Location", plusCode: plus, timestamp: Date.now() });
+        setCachedLocation({ latitude: lat, longitude: lon, altitude: alt, address: fallback, locationName: "GPS Location", plusCode: plus, nearPlace: "", timestamp: Date.now() });
       }
     };
 
@@ -230,6 +246,7 @@ export default function CameraTab() {
               address,
               locationName,
               plusCode,
+              nearPlace,
               timestamp: now.getTime(),
               compressed: true,
             };
@@ -393,6 +410,7 @@ export default function CameraTab() {
           address={address}
           locationName={locationName}
           plusCode={plusCode || computePlusCode(latitude, longitude)}
+          nearPlace={nearPlace}
           serialNumber={
             photos.length > 0
               ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`

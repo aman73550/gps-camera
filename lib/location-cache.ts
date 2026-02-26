@@ -9,6 +9,7 @@ export interface CachedLocation {
   address: string;
   locationName: string;
   plusCode: string;
+  nearPlace?: string;
   timestamp: number;
 }
 

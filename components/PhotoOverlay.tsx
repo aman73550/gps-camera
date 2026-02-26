@@ -10,6 +10,7 @@ interface PhotoOverlayProps {
   address: string;
   locationName: string;
   plusCode: string;
+  nearPlace?: string;
   serialNumber: string;
   timestamp: number;
 }
@@ -21,6 +22,7 @@ export function PhotoOverlay({
   address,
   locationName,
   plusCode,
+  nearPlace,
   serialNumber,
   timestamp,
 }: PhotoOverlayProps) {
@@ -66,6 +68,11 @@ export function PhotoOverlay({
           <Text style={styles.plusCodeText} numberOfLines={1}>
             Plus Code : {plusCode}
           </Text>
+          {nearPlace ? (
+            <Text style={styles.nearText} numberOfLines={1}>
+              Near : {nearPlace}
+            </Text>
+          ) : null}
           <Text style={styles.dateText} numberOfLines={1}>{dateStr}</Text>
 
           <View style={styles.bottomRow}>
@@ -150,6 +157,11 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontFamily: "Inter_500Medium",
     marginTop: 1,
+  },
+  nearText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 9.5,
+    fontFamily: "Inter_500Medium",
   },
   dateText: {
     color: "rgba(255,255,255,0.75)",
