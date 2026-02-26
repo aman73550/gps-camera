@@ -59,6 +59,8 @@ export function LoginModal({ visible, onClose }: Props) {
 
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: googleClientId,
+    iosClientId: googleClientId,
+    androidClientId: googleClientId,
     redirectUri,
   });
 
