@@ -19,13 +19,11 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { LoginModal } from "@/components/LoginModal";
-import { router } from "expo-router";
 import { FadeInView } from "@/components/FadeInView";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
 import {
@@ -97,7 +95,6 @@ export default function CameraTab() {
   const [plusCode, setPlusCode] = useState("");
   const [nearPlace, setNearPlace] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
-  const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [note, setNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
@@ -107,11 +104,6 @@ export default function CameraTab() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const photoCount = photos.length;
 
-  useEffect(() => {
-    if (photos.length > 0 && !lastCapturedUri) {
-      setLastCapturedUri(photos[0].uri);
-    }
-  }, [photos, lastCapturedUri]);
 
   useEffect(() => {
     getCachedLocation().then((cached) => {
@@ -311,7 +303,6 @@ export default function CameraTab() {
             };
 
             await addPhoto(record);
-            setLastCapturedUri(destUri);
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             resolve();
           } catch (err) {
@@ -539,31 +530,12 @@ export default function CameraTab() {
         {/* ── Black Control Panel ───────────────────────────────────── */}
         <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
           <View style={styles.controlsRow}>
-            {/* Gallery thumbnail */}
+            {/* Flip camera */}
             <Pressable
-              style={({ pressed }) => [styles.galleryPreview, { opacity: pressed ? 0.75 : 1 }]}
-              onPress={() => {
-                if (lastCapturedUri) {
-                  const match = photos.find((p) => p.uri === lastCapturedUri);
-                  if (match) {
-                    router.push(`/photo/${match.id}`);
-                    return;
-                  }
-                }
-                router.navigate("/(tabs)/files");
-              }}
+              style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={toggleCamera}
             >
-              {lastCapturedUri ? (
-                <Image
-                  source={{ uri: lastCapturedUri }}
-                  style={styles.galleryThumb}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={styles.galleryEmpty}>
-                  <Ionicons name="images-outline" size={22} color="#888" />
-                </View>
-              )}
+              <Ionicons name="camera-reverse-outline" size={26} color="#FFF" />
             </Pressable>
 
             {/* Capture button */}
@@ -605,19 +577,6 @@ export default function CameraTab() {
             </Pressable>
           </View>
 
-          {/* Flip camera — smaller row below */}
-          <View style={styles.secondaryRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.secondaryBtn,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-              onPress={toggleCamera}
-            >
-              <Ionicons name="camera-reverse-outline" size={20} color="rgba(255,255,255,0.75)" />
-              <Text style={styles.secondaryBtnText}>Flip</Text>
-            </Pressable>
-          </View>
         </View>
       </FadeInView>
     </KeyboardAvoidingView>
