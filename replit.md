@@ -14,9 +14,12 @@ A professional GPS camera app built with Expo React Native that captures geo-tag
 - **Camera Tab**: Live camera with real-time GPS overlay (lat/long/address)
 - **Photo Capture**: Auto-generates serial numbers (IMG-YYYYMMDD-XXX) and QR codes
 - **Image Compression**: Photos compressed to ~200-300KB via expo-image-manipulator
-- **Files Tab**: Grid gallery with search by serial number and QR code scanner
-- **Security**: Photos stored in private app directory, AsyncStorage whitelist verification
+- **Files Tab**: Clean 3-column grid (Google Photos style, no text overlays), multi-select on long-press with batch Upload/Share/Save/Delete actions
+- **Photo Detail**: Full info view with 4 action buttons: Share, Save to Gallery, Upload (manual-only with compression), Delete
+- **Upload Workflow**: Manual-only; triggers compression (200-300KB) + security verification before POST to Express server
+- **Security**: Photos stored in private app directory, AsyncStorage whitelist verification; unauthorized files blocked on upload
 - **Guest Mode**: 20-photo upload limit for guests
+- **Batch Operations**: Upload, Share, Save to DCIM gallery, and Delete multiple photos at once
 
 ## File Structure
 
@@ -40,7 +43,8 @@ contexts/
   PhotoContext.tsx          # Photo state management
 
 lib/
-  photo-storage.ts         # AsyncStorage operations, serial generation
+  photo-storage.ts         # AsyncStorage operations, serial generation, isWhitelisted
+  upload.ts                # Upload logic: security verify, compress, POST to server
   query-client.ts          # React Query client
 
 constants/

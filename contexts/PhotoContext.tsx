@@ -24,6 +24,7 @@ interface PhotoContextValue {
   refreshPhotos: () => Promise<void>;
   addPhoto: (record: PhotoRecord) => Promise<void>;
   removePhoto: (id: string) => Promise<void>;
+  removePhotos: (ids: string[]) => Promise<void>;
   searchBySerial: (serial: string) => Promise<PhotoRecord | undefined>;
   filterPhotos: (query: string) => PhotoRecord[];
 }
@@ -68,6 +69,16 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
     [refreshPhotos],
   );
 
+  const removePhotos = useCallback(
+    async (ids: string[]) => {
+      for (const id of ids) {
+        await deletePhotoRecord(id);
+      }
+      await refreshPhotos();
+    },
+    [refreshPhotos],
+  );
+
   const searchBySerial = useCallback(async (serial: string) => {
     return getPhotoBySerial(serial);
   }, []);
@@ -94,6 +105,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       refreshPhotos,
       addPhoto,
       removePhoto,
+      removePhotos,
       searchBySerial,
       filterPhotos,
     }),
@@ -105,6 +117,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       refreshPhotos,
       addPhoto,
       removePhoto,
+      removePhotos,
       searchBySerial,
       filterPhotos,
     ],
