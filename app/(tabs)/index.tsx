@@ -25,6 +25,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { LoginModal } from "@/components/LoginModal";
 import { FadeInView } from "@/components/FadeInView";
+import { Image } from "expo-image";
+import { router } from "expo-router";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
 import {
   generateSerialNumber,
@@ -95,6 +97,7 @@ export default function CameraTab() {
   const [plusCode, setPlusCode] = useState("");
   const [nearPlace, setNearPlace] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
+  const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [flash, setFlash] = useState<"off" | "on" | "auto">("off");
   const [note, setNote] = useState("");
@@ -105,6 +108,11 @@ export default function CameraTab() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const photoCount = photos.length;
 
+  useEffect(() => {
+    if (photos.length > 0 && !lastCapturedUri) {
+      setLastCapturedUri(photos[0].uri);
+    }
+  }, [photos, lastCapturedUri]);
 
   useEffect(() => {
     getCachedLocation().then((cached) => {
@@ -304,6 +312,7 @@ export default function CameraTab() {
             };
 
             await addPhoto(record);
+            setLastCapturedUri(destUri);
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             resolve();
           } catch (err) {
@@ -564,12 +573,24 @@ export default function CameraTab() {
         {/* ── Black Control Panel ───────────────────────────────────── */}
         <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
           <View style={styles.controlsRow}>
-            {/* Flip camera */}
+            {/* Gallery / last captured thumbnail */}
             <Pressable
-              style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={toggleCamera}
+              style={({ pressed }) => [styles.galleryPreview, { opacity: pressed ? 0.75 : 1 }]}
+              onPress={() => {
+                if (lastCapturedUri) {
+                  const match = photos.find((p) => p.uri === lastCapturedUri);
+                  if (match) { router.push(`/photo/${match.id}`); return; }
+                }
+                router.navigate("/(tabs)/files");
+              }}
             >
-              <Ionicons name="camera-reverse-outline" size={26} color="#FFF" />
+              {lastCapturedUri ? (
+                <Image source={{ uri: lastCapturedUri }} style={styles.galleryThumb} contentFit="cover" />
+              ) : (
+                <View style={styles.galleryEmpty}>
+                  <Ionicons name="images-outline" size={22} color="#888" />
+                </View>
+              )}
             </Pressable>
 
             {/* Capture button */}
@@ -590,24 +611,12 @@ export default function CameraTab() {
               )}
             </Pressable>
 
-            {/* Note toggle */}
+            {/* Flip camera */}
             <Pressable
-              style={({ pressed }) => [
-                styles.iconButton,
-                showNoteInput && styles.iconButtonActive,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-              onPress={() => {
-                setShowNoteInput((v) => !v);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
+              style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={toggleCamera}
             >
-              <Ionicons
-                name={showNoteInput ? "folder-open" : "folder-open-outline"}
-                size={22}
-                color={showNoteInput ? "rgba(255,230,100,0.95)" : "#FFF"}
-              />
-              {note.trim().length > 0 && <View style={styles.noteActiveDot} />}
+              <Ionicons name="camera-reverse-outline" size={26} color="#FFF" />
             </Pressable>
           </View>
 

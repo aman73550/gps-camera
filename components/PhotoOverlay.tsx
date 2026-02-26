@@ -87,7 +87,8 @@ export function PhotoOverlay({
           <View style={styles.bottomRow}>
             <View style={styles.watermarkTag}>
               <MaterialCommunityIcons name="shield-check" size={11} color="rgba(255,210,60,0.95)" />
-              <Text style={styles.watermarkText}>Click By Verified GPS Camera</Text>
+              <Text style={styles.watermarkClickBy}>Click By </Text>
+              <Text style={styles.watermarkAppName}>Verified GPS Camera</Text>
             </View>
             <View style={styles.metaSpacer} />
             <View style={styles.metaItem}>
@@ -201,8 +202,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  watermarkText: {
-    color: "rgba(255,210,60,0.90)",
+  watermarkClickBy: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.3,
+  },
+  watermarkAppName: {
+    color: "rgba(255,210,60,0.95)",
     fontSize: 11,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.4,
