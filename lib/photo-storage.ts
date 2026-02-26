@@ -67,10 +67,14 @@ export function computePlusCode(lat: number, lon: number): string {
 }
 
 export async function getAllPhotos(): Promise<PhotoRecord[]> {
-  const data = await AsyncStorage.getItem(PHOTOS_KEY);
-  if (!data) return [];
-  const photos: PhotoRecord[] = JSON.parse(data);
-  return photos.sort((a, b) => b.timestamp - a.timestamp);
+  try {
+    const data = await AsyncStorage.getItem(PHOTOS_KEY);
+    if (!data) return [];
+    const photos: PhotoRecord[] = JSON.parse(data);
+    return photos.sort((a, b) => b.timestamp - a.timestamp);
+  } catch {
+    return [];
+  }
 }
 
 export async function getPhotoBySerial(

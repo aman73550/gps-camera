@@ -44,6 +44,9 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       setPhotos(allPhotos);
       const count = await getUploadCount();
       setUploadCount(count);
+    } catch {
+      setPhotos([]);
+      setUploadCount(0);
     } finally {
       setIsLoading(false);
     }
