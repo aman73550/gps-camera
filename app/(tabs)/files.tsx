@@ -17,7 +17,6 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as MediaLibrary from "expo-media-library";
@@ -102,7 +101,7 @@ function PhotoGridItem({ item, isSelectMode, isSelected, onPress, onLongPress }:
 
 export default function FilesTab() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = Platform.OS === "web" ? 84 : 49 + insets.bottom;
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
     uploadCount, maxGuestUploads, removePhotos, isOnline, pendingCount } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
