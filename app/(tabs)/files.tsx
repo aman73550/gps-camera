@@ -440,7 +440,7 @@ export default function FilesTab() {
           {/* Settings button */}
           <Pressable
             style={({ pressed }) => [styles.trashBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => router.push("/(tabs)/settings")}
+            onPress={() => router.push("/settings")}
             testID="settings-button"
           >
             <Ionicons name="settings-outline" size={20} color={Colors.light.textSecondary} />

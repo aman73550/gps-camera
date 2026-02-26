@@ -103,6 +103,15 @@ function RootLayoutNav() {
           animation: "slide_from_right",
         }}
       />
+      <Stack.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerTintColor: Colors.light.text,
+          animation: "slide_from_right",
+        }}
+      />
     </Stack>
   );
 }

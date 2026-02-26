@@ -57,7 +57,6 @@ function SectionHeader({ title }: { title: string }) {
 
 export default function SettingsTab() {
   const insets = useSafeAreaInsets();
-  const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
   const openUrl = async (url: string, label: string) => {
@@ -70,11 +69,7 @@ export default function SettingsTab() {
   };
 
   return (
-    <FadeInView style={[styles.container, { paddingTop: topInset }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
-
+    <FadeInView style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: bottomInset + 24 }]}
         showsVerticalScrollIndicator={false}
@@ -121,16 +116,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.onSurface,
   },
   content: {
     paddingHorizontal: 16,
