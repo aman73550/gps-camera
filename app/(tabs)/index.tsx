@@ -313,15 +313,21 @@ export default function CameraTab() {
     );
   }
 
+  const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+
   return (
-    <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
-        <View
-          style={[
-            styles.topBar,
-            { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 },
-          ]}
-        >
+    <View style={[styles.container, { paddingTop: topInset }]}>
+      {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
+      <View style={styles.previewWrapper}>
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing={facing}
+        />
+
+        {/* Top overlay bar — GPS LIVE, count, flip */}
+        <View style={styles.topBar}>
           <View style={styles.gpsLiveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.gpsLiveText}>GPS LIVE</Text>
@@ -339,82 +345,76 @@ export default function CameraTab() {
               ]}
               onPress={toggleCamera}
             >
-              <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
+              <Ionicons name="camera-reverse-outline" size={22} color="#FFF" />
             </Pressable>
           </View>
         </View>
 
-        <View style={styles.liveGeoOverlay}>
-          <View style={styles.liveGeoCard}>
-            <View style={styles.liveGeoRow}>
-              <Ionicons name="location" size={14} color={Colors.light.primary} />
-              <Text style={styles.liveCoords}>
-                {latitude.toFixed(6)}, {longitude.toFixed(6)}
-              </Text>
-              {altitude > 0 && (
-                <Text style={styles.liveAlt}> · {Math.round(altitude)}m</Text>
-              )}
-            </View>
-            <Text style={styles.liveAddress} numberOfLines={1}>
-              {locationName !== "Unknown Location" ? locationName : address}
-            </Text>
-          </View>
-        </View>
+        {/* Geo-details overlay pinned to bottom of preview */}
+        <PhotoOverlay
+          latitude={latitude}
+          longitude={longitude}
+          altitude={altitude}
+          address={address}
+          locationName={locationName}
+          plusCode={plusCode || computePlusCode(latitude, longitude)}
+          serialNumber={
+            photos.length > 0
+              ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
+              : "IMG-NEXT-001"
+          }
+          timestamp={Date.now()}
+        />
+      </View>
 
-        <View style={styles.bottomControls}>
-          <View
-            style={{
-              paddingBottom:
-                Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
-              paddingTop: 20,
-            }}
+      {/* ── Black Control Panel ───────────────────────────────────── */}
+      <View style={[styles.controlPanel, { paddingBottom: bottomInset + 16 }]}>
+        <View style={styles.controlsRow}>
+          {/* Gallery thumbnail */}
+          <Pressable style={styles.galleryPreview}>
+            {lastCapturedUri ? (
+              <Image
+                source={{ uri: lastCapturedUri }}
+                style={styles.galleryThumb}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.galleryEmpty}>
+                <Ionicons name="images-outline" size={22} color="#888" />
+              </View>
+            )}
+          </Pressable>
+
+          {/* Capture button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.captureButton,
+              isCapturing && styles.captureButtonDisabled,
+              { transform: [{ scale: pressed ? 0.93 : 1 }] },
+            ]}
+            onPress={capturePhoto}
+            disabled={isCapturing}
+            testID="capture-button"
           >
-            <View style={styles.controlsRow}>
-              <Pressable style={styles.galleryPreview}>
-                {lastCapturedUri ? (
-                  <Image
-                    source={{ uri: lastCapturedUri }}
-                    style={styles.galleryThumb}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View style={styles.galleryEmpty}>
-                    <Ionicons name="images-outline" size={22} color="#999" />
-                  </View>
-                )}
-              </Pressable>
+            {isCapturing ? (
+              <ActivityIndicator size="small" color="#000" />
+            ) : (
+              <View style={styles.captureInner} />
+            )}
+          </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.captureButton,
-                  isCapturing && styles.captureButtonDisabled,
-                  { transform: [{ scale: pressed ? 0.92 : 1 }] },
-                ]}
-                onPress={capturePhoto}
-                disabled={isCapturing}
-              >
-                {isCapturing ? (
-                  <ActivityIndicator size="small" color={Colors.light.primary} />
-                ) : (
-                  <View style={styles.captureInner} />
-                )}
-              </Pressable>
-
-              <View style={styles.placeholderButton} />
-            </View>
-          </View>
+          {/* Flip camera */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.iconButton,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={toggleCamera}
+          >
+            <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
+          </Pressable>
         </View>
-      </CameraView>
-      <PhotoOverlay
-        latitude={latitude}
-        longitude={longitude}
-        altitude={altitude}
-        address={address}
-        locationName={locationName}
-        plusCode={plusCode || computePlusCode(latitude, longitude)}
-        serialNumber={photos.length > 0 ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}` : "IMG-NEXT-001"}
-        timestamp={Date.now()}
-      />
+      </View>
     </View>
   );
 }
@@ -423,6 +423,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
+    flexDirection: "column",
   },
   centerContainer: {
     flex: 1,
@@ -493,15 +494,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
-  camera: {
-    flex: 1,
+  previewWrapper: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    backgroundColor: "#111",
+    overflow: "hidden",
   },
   topBar: {
+    position: "absolute",
+    top: 10,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 14,
   },
   topRight: {
     flexDirection: "row",
@@ -509,7 +516,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   countBadge: {
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -522,7 +529,7 @@ const styles = StyleSheet.create({
   gpsLiveBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -541,67 +548,33 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   topButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     alignItems: "center",
   },
-  liveGeoOverlay: {
-    position: "absolute",
-    bottom: 160,
-    left: 16,
-    right: 16,
-  },
-  liveGeoCard: {
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 16,
-    padding: 14,
-  },
-  liveGeoRow: {
-    flexDirection: "row",
+  controlPanel: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
     alignItems: "center",
-    gap: 6,
-  },
-  liveCoords: {
-    color: "#FFF",
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.3,
-  },
-  liveAddress: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 4,
-    marginLeft: 20,
-  },
-  liveAlt: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  bottomControls: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0,0,0,0.6)",
   },
   controlsRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 24,
+    justifyContent: "space-between",
+    paddingHorizontal: 48,
+    width: "100%",
   },
   galleryPreview: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderColor: "rgba(255,255,255,0.35)",
   },
   galleryThumb: {
     width: "100%",
@@ -612,29 +585,33 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   captureButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(255,255,255,0.3)",
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 4,
     borderColor: "#FFF",
   },
   captureButtonDisabled: {
-    borderColor: "rgba(255,255,255,0.5)",
+    borderColor: "rgba(255,255,255,0.4)",
   },
   captureInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "#FFF",
   },
-  placeholderButton: {
-    width: 48,
-    height: 48,
+  iconButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
 });
