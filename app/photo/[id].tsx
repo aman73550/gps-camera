@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  Linking,
   Platform,
   Dimensions,
   ActivityIndicator,
@@ -53,7 +54,7 @@ export default function PhotoDetailScreen() {
   const [uploadStatus, setUploadStatus] = useState("");
 
   const imageContainerRef = useRef<View>(null);
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const photo = photos.find((p) => p.id === id);
 
   if (!photo) {
@@ -177,6 +178,58 @@ export default function PhotoDetailScreen() {
     }
   };
 
+  const openInMaps = (label: string, googleUrl: string, appleUrl: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === "ios") {
+      Alert.alert(`Open ${label} in Maps`, "Choose your preferred maps app", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Google Maps",
+          onPress: () => Linking.openURL(googleUrl).catch(() =>
+            Linking.openURL(googleUrl.replace("comgooglemaps://", "https://maps.google.com/"))
+          ),
+        },
+        {
+          text: "Apple Maps",
+          onPress: () => Linking.openURL(appleUrl),
+        },
+      ]);
+    } else {
+      Alert.alert(`Open in Google Maps`, `Open ${label} in Google Maps?`, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Open Maps", onPress: () => Linking.openURL(googleUrl) },
+      ]);
+    }
+  };
+
+  const handleOpenLocation = () => {
+    const q = encodeURIComponent(photo.address || `${photo.latitude},${photo.longitude}`);
+    openInMaps(
+      "Location",
+      `https://maps.google.com/?q=${q}`,
+      `maps://maps.apple.com/?q=${q}`,
+    );
+  };
+
+  const handleOpenCoordinates = () => {
+    const lat = photo.latitude.toFixed(6);
+    const lng = photo.longitude.toFixed(6);
+    openInMaps(
+      "GPS Coordinates",
+      `https://maps.google.com/?q=${lat},${lng}`,
+      `maps://maps.apple.com/?ll=${lat},${lng}`,
+    );
+  };
+
+  const handleOpenPlusCode = () => {
+    const q = encodeURIComponent(photo.plusCode ?? "");
+    openInMaps(
+      "Plus Code",
+      `https://maps.google.com/?q=${q}`,
+      `maps://maps.apple.com/?q=${q}`,
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -263,40 +316,52 @@ export default function PhotoDetailScreen() {
             <View style={styles.divider} />
 
             <View style={styles.infoSection}>
-              <View style={styles.infoRow}>
+              <Pressable
+                style={({ pressed }) => [styles.infoRow, styles.tappableRow, { opacity: pressed ? 0.65 : 1 }]}
+                onPress={handleOpenLocation}
+              >
                 <View style={styles.infoIconWrap}>
                   <Ionicons name="location" size={18} color={Colors.light.primary} />
                 </View>
                 <View style={styles.infoTextWrap}>
                   <Text style={styles.infoLabel}>Location</Text>
-                  <Text style={styles.infoValue}>{photo.locationName ?? photo.address}</Text>
+                  <Text style={[styles.infoValue, styles.tappableText]}>{photo.locationName ?? photo.address}</Text>
                   <Text style={styles.infoSubValue}>{photo.address}</Text>
                 </View>
-              </View>
+                <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
+              </Pressable>
 
-              <View style={styles.infoRow}>
+              <Pressable
+                style={({ pressed }) => [styles.infoRow, styles.tappableRow, { opacity: pressed ? 0.65 : 1 }]}
+                onPress={handleOpenCoordinates}
+              >
                 <View style={styles.infoIconWrap}>
                   <Ionicons name="navigate" size={18} color={Colors.light.primary} />
                 </View>
                 <View style={styles.infoTextWrap}>
                   <Text style={styles.infoLabel}>GPS Coordinates</Text>
-                  <Text style={styles.infoValue}>{photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}</Text>
+                  <Text style={[styles.infoValue, styles.tappableText]}>{photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}</Text>
                   {(photo.altitude ?? 0) > 0 && (
                     <Text style={styles.infoSubValue}>Altitude: {Math.round(photo.altitude ?? 0)} m</Text>
                   )}
                 </View>
-              </View>
+                <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
+              </Pressable>
 
               {photo.plusCode ? (
-                <View style={styles.infoRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.infoRow, styles.tappableRow, { opacity: pressed ? 0.65 : 1 }]}
+                  onPress={handleOpenPlusCode}
+                >
                   <View style={styles.infoIconWrap}>
                     <MaterialCommunityIcons name="map-marker-outline" size={18} color={Colors.light.primary} />
                   </View>
                   <View style={styles.infoTextWrap}>
                     <Text style={styles.infoLabel}>Plus Code</Text>
-                    <Text style={styles.infoValue}>{photo.plusCode}</Text>
+                    <Text style={[styles.infoValue, styles.tappableText]}>{photo.plusCode}</Text>
                   </View>
-                </View>
+                  <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
+                </Pressable>
               ) : null}
 
               <View style={styles.infoRow}>
@@ -398,4 +463,12 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 },
   infoValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.light.onSurface },
   infoSubValue: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, marginTop: 2 },
+  tappableRow: {
+    backgroundColor: "rgba(21,101,192,0.055)",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginHorizontal: -10,
+  },
+  tappableText: { color: Colors.light.primary },
 });
