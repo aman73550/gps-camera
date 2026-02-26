@@ -83,7 +83,7 @@ export async function checkUploadLimit(
   return { allowed: true, tier };
 }
 
-export async function recordUpload(data: {
+export interface UploadRecord {
   user_phone: string | null;
   serial_number: string;
   latitude: number;
@@ -95,10 +95,18 @@ export async function recordUpload(data: {
   file_path: string;
   file_size_kb: number;
   is_guest: boolean;
-}): Promise<void> {
+}
+
+export async function recordUpload(data: UploadRecord): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("uploads").insert(data);
   if (error) console.error("Supabase recordUpload error:", error.message);
+}
+
+export async function recordUploadBatch(records: UploadRecord[]): Promise<void> {
+  if (!supabase || records.length === 0) return;
+  const { error } = await supabase.from("uploads").insert(records);
+  if (error) console.error("Supabase recordUploadBatch error:", error.message);
 }
 
 export async function upsertProfile(phone: string): Promise<void> {

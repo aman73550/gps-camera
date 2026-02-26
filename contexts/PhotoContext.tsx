@@ -11,8 +11,11 @@ import * as Network from "expo-network";
 import {
   PhotoRecord,
   getAllPhotos,
+  getTrashPhotos,
   savePhotoRecord,
   deletePhotoRecord,
+  restorePhoto,
+  permanentlyDeletePhoto,
   getPhotoBySerial,
   getUploadCount,
   setPendingUpload as storageSetPendingUpload,
@@ -20,6 +23,7 @@ import {
 
 interface PhotoContextValue {
   photos: PhotoRecord[];
+  trashPhotos: PhotoRecord[];
   isLoading: boolean;
   uploadCount: number;
   maxGuestUploads: number;
@@ -29,6 +33,9 @@ interface PhotoContextValue {
   addPhoto: (record: PhotoRecord) => Promise<void>;
   removePhoto: (id: string) => Promise<void>;
   removePhotos: (ids: string[]) => Promise<void>;
+  restoreFromTrash: (id: string) => Promise<void>;
+  permanentlyDelete: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
   searchBySerial: (serial: string) => Promise<PhotoRecord | undefined>;
   filterPhotos: (query: string) => PhotoRecord[];
   setPendingUpload: (id: string, pending: boolean) => Promise<void>;
@@ -38,6 +45,7 @@ const PhotoContext = createContext<PhotoContextValue | null>(null);
 
 export function PhotoProvider({ children }: { children: ReactNode }) {
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
+  const [trashPhotos, setTrashPhotos] = useState<PhotoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadCount, setUploadCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
@@ -51,12 +59,17 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
   const refreshPhotos = useCallback(async () => {
     setIsLoading(true);
     try {
-      const allPhotos = await getAllPhotos();
+      const [allPhotos, trash, count] = await Promise.all([
+        getAllPhotos(),
+        getTrashPhotos(),
+        getUploadCount(),
+      ]);
       setPhotos(allPhotos);
-      const count = await getUploadCount();
+      setTrashPhotos(trash);
       setUploadCount(count);
     } catch {
       setPhotos([]);
+      setTrashPhotos([]);
       setUploadCount(0);
     } finally {
       setIsLoading(false);
@@ -103,6 +116,29 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
     [refreshPhotos],
   );
 
+  const restoreFromTrash = useCallback(
+    async (id: string) => {
+      await restorePhoto(id);
+      await refreshPhotos();
+    },
+    [refreshPhotos],
+  );
+
+  const permanentlyDelete = useCallback(
+    async (id: string) => {
+      await permanentlyDeletePhoto(id);
+      await refreshPhotos();
+    },
+    [refreshPhotos],
+  );
+
+  const emptyTrash = useCallback(async () => {
+    for (const p of trashPhotos) {
+      await permanentlyDeletePhoto(p.id);
+    }
+    await refreshPhotos();
+  }, [trashPhotos, refreshPhotos]);
+
   const searchBySerial = useCallback(async (serial: string) => {
     return getPhotoBySerial(serial);
   }, []);
@@ -131,6 +167,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       photos,
+      trashPhotos,
       isLoading,
       uploadCount,
       maxGuestUploads,
@@ -140,12 +177,16 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       addPhoto,
       removePhoto,
       removePhotos,
+      restoreFromTrash,
+      permanentlyDelete,
+      emptyTrash,
       searchBySerial,
       filterPhotos,
       setPendingUpload,
     }),
     [
       photos,
+      trashPhotos,
       isLoading,
       uploadCount,
       maxGuestUploads,
@@ -155,6 +196,9 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       addPhoto,
       removePhoto,
       removePhotos,
+      restoreFromTrash,
+      permanentlyDelete,
+      emptyTrash,
       searchBySerial,
       filterPhotos,
       setPendingUpload,

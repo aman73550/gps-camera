@@ -225,10 +225,15 @@ export default function CameraTab() {
             const id = generateId();
             const now = new Date();
 
+            const useWebP = Platform.OS === "android";
+            const imgFormat = useWebP
+              ? ImageManipulator.SaveFormat.WEBP
+              : ImageManipulator.SaveFormat.JPEG;
+
             const resized = await ImageManipulator.manipulateAsync(
               photo.uri,
               [{ resize: { width: 1200 } }],
-              { format: ImageManipulator.SaveFormat.JPEG },
+              { format: imgFormat },
             );
 
             const targetHeight = Math.round(1200 * (4 / 3));
@@ -240,10 +245,10 @@ export default function CameraTab() {
             const compressed = await ImageManipulator.manipulateAsync(
               resized.uri,
               cropActions,
-              { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
+              { compress: 0.6, format: imgFormat },
             );
 
-            const fileName = `${serialNumber}.jpg`;
+            const fileName = `${serialNumber}.${useWebP ? "webp" : "jpg"}`;
             const destUri = `${getPhotosDirectory()}${fileName}`;
             await FileSystem.moveAsync({ from: compressed.uri, to: destUri });
 

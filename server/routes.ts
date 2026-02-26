@@ -7,10 +7,12 @@ import {
   supabase,
   checkUploadLimit,
   recordUpload,
+  recordUploadBatch,
   upsertProfile,
   getAppSettings,
   updateAppSettings,
   runAutoCleanup,
+  UploadRecord,
 } from "./supabase";
 
 const uploadsDir = path.resolve(process.cwd(), "server", "uploads");
@@ -18,12 +20,15 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+const ACCEPTED_MIME = new Set(["image/jpeg", "image/jpg", "image/webp"]);
+
 const multerStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const serial = (_req as Request & { body: { serialNumber?: string } }).body
+  filename: (req, file, cb) => {
+    const serial = (req as Request & { body: { serialNumber?: string } }).body
       ?.serialNumber;
-    const name = serial ? `${serial}.jpg` : `${Date.now()}-${file.originalname}`;
+    const ext = file.mimetype === "image/webp" ? "webp" : "jpg";
+    const name = serial ? `${serial}.${ext}` : `${Date.now()}-${file.originalname}`;
     cb(null, name);
   },
 });
@@ -32,10 +37,10 @@ const upload = multer({
   storage: multerStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype === "image/jpeg" || file.mimetype === "image/jpg") {
+    if (ACCEPTED_MIME.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPEG images are allowed"));
+      cb(new Error("Only JPEG or WebP images are allowed"));
     }
   },
 });
@@ -104,32 +109,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userPhone = reqExt.userPhone ?? null;
       const isGuest = reqExt.isGuest ?? true;
 
-      await recordUpload({
-        user_phone: userPhone,
-        serial_number: serialNumber || "",
-        latitude: parseFloat(latitude) || 0,
-        longitude: parseFloat(longitude) || 0,
-        altitude: parseFloat(altitude) || 0,
-        address: address || "",
-        location_name: locationName || "",
-        plus_code: plusCode || "",
-        file_path: req.file.filename,
-        file_size_kb: Math.round(req.file.size / 1024),
-        is_guest: isGuest,
-      });
+      const skipRecord = req.headers["x-skip-record"] === "true";
+
+      if (!skipRecord) {
+        await recordUpload({
+          user_phone: userPhone,
+          serial_number: serialNumber || "",
+          latitude: parseFloat(latitude) || 0,
+          longitude: parseFloat(longitude) || 0,
+          altitude: parseFloat(altitude) || 0,
+          address: address || "",
+          location_name: locationName || "",
+          plus_code: plusCode || "",
+          file_path: req.file.filename,
+          file_size_kb: Math.round(req.file.size / 1024),
+          is_guest: isGuest,
+        });
+      }
 
       if (userPhone) {
         await upsertProfile(userPhone);
       }
 
       console.log(
-        `Upload: ${serialNumber} (${req.file.size}B) user=${userPhone || "guest"}`,
+        `Upload: ${serialNumber} (${req.file.size}B) user=${userPhone || "guest"} skipRecord=${skipRecord}`,
       );
 
       return res.status(200).json({
         success: true,
         message: "Photo uploaded successfully",
         serial: serialNumber,
+        filePath: req.file.filename,
       });
     },
   );
@@ -138,12 +148,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const files = fs
         .readdirSync(uploadsDir)
-        .filter((f) => f.endsWith(".jpg"));
+        .filter((f) => f.endsWith(".jpg") || f.endsWith(".webp"));
       res.json({ count: files.length, files });
     } catch {
       res.json({ count: 0, files: [] });
     }
   });
+
+  app.post(
+    "/api/record-uploads",
+    async (req: Request, res: Response) => {
+      try {
+        const userPhone = req.headers["x-user-phone"] as string | undefined;
+        const isGuestHeader = req.headers["x-is-guest"] as string | undefined;
+        const isGuest = isGuestHeader === "true" || !userPhone;
+        const uploads = req.body?.uploads as Array<{
+          serialNumber: string;
+          latitude: number;
+          longitude: number;
+          altitude: number;
+          address: string;
+          locationName: string;
+          plusCode: string;
+          filePath: string;
+          fileSizeKb: number;
+        }>;
+
+        if (!Array.isArray(uploads) || uploads.length === 0) {
+          return res.status(400).json({ error: "No uploads provided" });
+        }
+
+        const records: UploadRecord[] = uploads.map((u) => ({
+          user_phone: userPhone || null,
+          serial_number: u.serialNumber || "",
+          latitude: Number(u.latitude) || 0,
+          longitude: Number(u.longitude) || 0,
+          altitude: Number(u.altitude) || 0,
+          address: u.address || "",
+          location_name: u.locationName || "",
+          plus_code: u.plusCode || "",
+          file_path: u.filePath || "",
+          file_size_kb: Number(u.fileSizeKb) || 0,
+          is_guest: isGuest,
+        }));
+
+        await recordUploadBatch(records);
+
+        if (userPhone) {
+          await upsertProfile(userPhone);
+        }
+
+        console.log(`Batch record: ${records.length} uploads for user=${userPhone || "guest"}`);
+        return res.status(200).json({ success: true, recorded: records.length });
+      } catch (err) {
+        console.error("Batch record error:", err);
+        return res.status(500).json({ error: "Failed to record uploads" });
+      }
+    },
+  );
 
   app.get("/admin", (_req: Request, res: Response) => {
     const adminPath = path.resolve(

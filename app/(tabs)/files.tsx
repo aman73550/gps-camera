@@ -367,6 +367,15 @@ export default function FilesTab() {
                 : ` · Guest ${uploadCount}/${maxGuestUploads}`}
             </Text>
           </View>
+          <View style={styles.headerActions}>
+          {/* Trash button */}
+          <Pressable
+            style={({ pressed }) => [styles.trashBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => router.push("/trash")}
+            testID="trash-button"
+          >
+            <Ionicons name="trash-outline" size={20} color={Colors.light.textSecondary} />
+          </Pressable>
           {/* Auth status button */}
           <Pressable
             style={({ pressed }) => [styles.authBtn, { opacity: pressed ? 0.8 : 1 }]}
@@ -404,6 +413,7 @@ export default function FilesTab() {
               </>
             )}
           </Pressable>
+          </View>
         </View>
       )}
 
@@ -621,6 +631,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
     marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  trashBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.light.surfaceVariant,
+    justifyContent: "center",
+    alignItems: "center",
   },
   authBtn: {
     width: 44,

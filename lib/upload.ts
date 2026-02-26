@@ -29,15 +29,35 @@ function getServerBase(): string {
   return "http://localhost:5000";
 }
 
+function getImageFormat(): {
+  format: ImageManipulator.SaveFormat;
+  mimeType: string;
+  ext: string;
+} {
+  if (Platform.OS === "android") {
+    return {
+      format: ImageManipulator.SaveFormat.WEBP,
+      mimeType: "image/webp",
+      ext: "webp",
+    };
+  }
+  return {
+    format: ImageManipulator.SaveFormat.JPEG,
+    mimeType: "image/jpeg",
+    ext: "jpg",
+  };
+}
+
 export async function compressForUpload(
   uri: string,
-): Promise<{ uri: string }> {
+): Promise<{ uri: string; ext: string; mimeType: string }> {
+  const { format, mimeType, ext } = getImageFormat();
   const result = await ImageManipulator.manipulateAsync(
     uri,
     [{ resize: { width: 1000 } }],
-    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG },
+    { compress: 0.5, format },
   );
-  return result;
+  return { uri: result.uri, ext, mimeType };
 }
 
 export async function runVerificationChain(
@@ -88,8 +108,8 @@ export async function uploadPhoto(
   const formData = new FormData();
   formData.append("photo", {
     uri: compressed.uri,
-    type: "image/jpeg",
-    name: `${photo.serialNumber}.jpg`,
+    type: compressed.mimeType,
+    name: `${photo.serialNumber}.${compressed.ext}`,
   } as unknown as Blob);
   formData.append("serialNumber", photo.serialNumber);
   formData.append("latitude", String(photo.latitude));
@@ -135,6 +155,39 @@ export async function uploadPhoto(
   onProgress?.("Done");
 }
 
+interface UploadMetadata {
+  serialNumber: string;
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  address: string;
+  locationName: string;
+  plusCode: string;
+  timestamp: number;
+  filePath: string;
+  fileSizeKb: number;
+}
+
+async function recordUploadsBatch(
+  metadata: UploadMetadata[],
+  userPhone: string | null,
+  isGuest: boolean,
+): Promise<void> {
+  if (metadata.length === 0) return;
+  try {
+    await fetch(`${getServerBase()}/api/record-uploads`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(userPhone ? { "X-User-Phone": userPhone } : {}),
+        "X-Is-Guest": isGuest ? "true" : "false",
+      },
+      body: JSON.stringify({ uploads: metadata }),
+    });
+  } catch {
+  }
+}
+
 export async function uploadPhotoBatch(
   photos: PhotoRecord[],
   onProgress?: (current: number, total: number, status: string) => void,
@@ -143,17 +196,82 @@ export async function uploadPhotoBatch(
 ): Promise<{ succeeded: string[]; failed: { serial: string; error: string }[] }> {
   const succeeded: string[] = [];
   const failed: { serial: string; error: string }[] = [];
+  const batchMetadata: UploadMetadata[] = [];
 
   for (let i = 0; i < photos.length; i++) {
     const photo = photos[i];
     try {
-      await uploadPhoto(
-        photo,
-        (status) =>
-          onProgress?.(i + 1, photos.length, `${photo.serialNumber}: ${status}`),
-        isLoggedIn,
-        userPhone,
-      );
+      onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Verifying…`);
+      await runVerificationChain(photo, isLoggedIn);
+
+      onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Compressing…`);
+      const compressed = await compressForUpload(photo.uri);
+
+      onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Uploading…`);
+      const formData = new FormData();
+      formData.append("photo", {
+        uri: compressed.uri,
+        type: compressed.mimeType,
+        name: `${photo.serialNumber}.${compressed.ext}`,
+      } as unknown as Blob);
+      formData.append("serialNumber", photo.serialNumber);
+      formData.append("latitude", String(photo.latitude));
+      formData.append("longitude", String(photo.longitude));
+      formData.append("altitude", String(photo.altitude ?? 0));
+      formData.append("address", photo.address);
+      formData.append("locationName", photo.locationName || "");
+      formData.append("plusCode", photo.plusCode || "");
+      formData.append("timestamp", String(photo.timestamp));
+
+      const headers: Record<string, string> = { "X-Skip-Record": "true" };
+      if (userPhone) {
+        headers["X-User-Phone"] = userPhone;
+        headers["X-Is-Guest"] = "false";
+      } else {
+        headers["X-Is-Guest"] = "true";
+      }
+
+      let response: Response;
+      try {
+        response = await fetch(`${getServerBase()}/api/upload`, {
+          method: "POST",
+          headers,
+          body: formData,
+        });
+      } catch {
+        await setPendingUpload(photo.id, true);
+        throw new Error(NETWORK_ERROR);
+      }
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: response.statusText }));
+        const errorCode = data?.error;
+        if (errorCode === "GUEST_LIMIT") throw new Error(GUEST_LIMIT_ERROR);
+        if (errorCode === "DAILY_LIMIT") throw new Error(DAILY_LIMIT_ERROR);
+        if (errorCode === "MONTHLY_LIMIT") throw new Error(MONTHLY_LIMIT_ERROR);
+        throw new Error(`Upload failed: ${JSON.stringify(data)}`);
+      }
+
+      const responseData = await response.json().catch(() => ({}));
+      const filePath: string = responseData.filePath || `${photo.serialNumber}.${compressed.ext}`;
+
+      await setPendingUpload(photo.id, false);
+      await incrementUploadCount();
+      await markPhotoAsUploaded(photo.id);
+
+      batchMetadata.push({
+        serialNumber: photo.serialNumber,
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        altitude: photo.altitude ?? 0,
+        address: photo.address,
+        locationName: photo.locationName || "",
+        plusCode: photo.plusCode || "",
+        timestamp: photo.timestamp,
+        filePath,
+        fileSizeKb: Math.round((compressed.uri.length * 0.75) / 1024),
+      });
+
       succeeded.push(photo.serialNumber);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -165,6 +283,10 @@ export async function uploadPhotoBatch(
       )
         break;
     }
+  }
+
+  if (batchMetadata.length > 0) {
+    await recordUploadsBatch(batchMetadata, userPhone ?? null, !isLoggedIn);
   }
 
   return { succeeded, failed };

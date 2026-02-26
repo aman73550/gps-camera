@@ -28,6 +28,7 @@ import { queryClient } from "@/lib/query-client";
 import { PhotoProvider } from "@/contexts/PhotoContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { checkRequiredVersion } from "@/lib/supabase";
+import { cleanExpiredTrash } from "@/lib/photo-storage";
 import Colors from "@/constants/colors";
 
 const APP_VERSION = "1.0.0";
@@ -158,6 +159,15 @@ function RootLayoutNav() {
           animation: "fade_from_bottom",
         }}
       />
+      <Stack.Screen
+        name="trash"
+        options={{
+          title: "Recycle Bin",
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerTintColor: Colors.light.text,
+          animation: "slide_from_right",
+        }}
+      />
     </Stack>
   );
 }
@@ -174,6 +184,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
+      cleanExpiredTrash(7).catch(() => {});
       checkRequiredVersion().then((requiredVersion) => {
         if (requiredVersion && isVersionLower(APP_VERSION, requiredVersion)) {
           setShowUpdateModal(true);
