@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Updates from "expo-updates";
+import { reloadAppAsync } from "expo";
 import React, { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -86,30 +87,36 @@ function HardBlockScreen() {
 
 function OtaSnackbar({ visible }: { visible: boolean }) {
   const translateY = useRef(new Animated.Value(100)).current;
+  const [dismissed, setDismissed] = useState(false);
+
+  const isShown = visible && !dismissed;
 
   useEffect(() => {
     Animated.spring(translateY, {
-      toValue: visible ? 0 : 100,
+      toValue: isShown ? 0 : 100,
       useNativeDriver: true,
       friction: 8,
     }).start();
-  }, [visible, translateY]);
+  }, [isShown, translateY]);
 
   const handleRestart = async () => {
     try {
-      await Updates.reloadAsync();
+      await reloadAppAsync();
     } catch {}
   };
 
   return (
     <Animated.View
       style={[snackStyles.container, { transform: [{ translateY }] }]}
-      pointerEvents={visible ? "auto" : "none"}
+      pointerEvents={isShown ? "auto" : "none"}
     >
       <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
       <Text style={snackStyles.text}>New version downloaded. Restart to apply.</Text>
       <Pressable onPress={handleRestart}>
         <Text style={snackStyles.restartBtn}>Restart</Text>
+      </Pressable>
+      <Pressable onPress={() => setDismissed(true)} hitSlop={10}>
+        <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
       </Pressable>
     </Animated.View>
   );
@@ -170,7 +177,7 @@ export default function RootLayout() {
 
     if (bootState === "ok") {
       cleanExpiredTrash(7).catch(() => {});
-      if (Updates.isEnabled) {
+      if (!__DEV__ && Updates.isEnabled) {
         (async () => {
           try {
             const update = await Updates.checkForUpdateAsync();
