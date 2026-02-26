@@ -83,7 +83,7 @@ export function PhotoOverlay({
           ) : null}
           <Text style={styles.dateText} numberOfLines={1}>{dateStr}</Text>
 
-          {/* Watermark + meta in one row */}
+          {/* Watermark row */}
           <View style={styles.bottomRow}>
             <View style={styles.watermarkTag}>
               <MaterialCommunityIcons name="shield-check" size={11} color="rgba(255,210,60,0.95)" />
@@ -95,6 +95,8 @@ export function PhotoOverlay({
               <Text style={styles.metaText}>{altStr}</Text>
             </View>
           </View>
+          {/* Scan hint */}
+          <Text style={styles.scanHintText}>Scan QR via app for verification</Text>
         </View>
 
       </View>
@@ -217,5 +219,11 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.70)",
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+  },
+  scanHintText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.3,
   },
 });
