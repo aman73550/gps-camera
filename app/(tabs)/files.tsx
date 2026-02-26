@@ -104,7 +104,7 @@ export default function FilesTab() {
   const tabBarHeight = Platform.OS === "web" ? 84 : 49 + insets.bottom;
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
     uploadCount, maxGuestUploads, removePhotos, isOnline, pendingCount } = usePhotos();
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -393,51 +393,6 @@ export default function FilesTab() {
             </Text>
           </View>
           <View style={styles.headerActions}>
-          {/* Trash button */}
-          <Pressable
-            style={({ pressed }) => [styles.trashBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => router.push("/trash")}
-            testID="trash-button"
-          >
-            <Ionicons name="trash-outline" size={20} color={Colors.light.textSecondary} />
-          </Pressable>
-          {/* Auth status button */}
-          <Pressable
-            style={({ pressed }) => [styles.authBtn, { opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => {
-              if (isLoggedIn) {
-                Alert.alert(
-                  `Signed in as ${user?.phone}`,
-                  "You have unlimited uploads.",
-                  [
-                    { text: "Sign Out", style: "destructive", onPress: logout },
-                    { text: "OK", style: "cancel" },
-                  ],
-                );
-              } else {
-                setShowLoginModal(true);
-              }
-            }}
-            testID="auth-button"
-          >
-            {isLoggedIn ? (
-              <>
-                <View style={styles.authAvatarCircle}>
-                  <Text style={styles.authAvatarText}>
-                    {user?.phone ? user.phone.replace(/\D/g, "").slice(-1) : "U"}
-                  </Text>
-                </View>
-                <View style={styles.authGreenDot} />
-              </>
-            ) : (
-              <>
-                <Ionicons name="person-outline" size={20} color={Colors.light.primary} />
-                <View style={styles.authLockBadge}>
-                  <Ionicons name="lock-closed" size={8} color="#FFF" />
-                </View>
-              </>
-            )}
-          </Pressable>
           {/* Settings button */}
           <Pressable
             style={({ pressed }) => [styles.trashBtn, { opacity: pressed ? 0.7 : 1 }]}
@@ -668,52 +623,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surfaceVariant,
     justifyContent: "center",
     alignItems: "center",
-  },
-  authBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.light.primaryContainer,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  authAvatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.light.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  authAvatarText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-  },
-  authGreenDot: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#34C759",
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  authLockBadge: {
-    position: "absolute",
-    bottom: 3,
-    right: 3,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: Colors.light.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#FFF",
   },
   qrFab: {
     position: "absolute",

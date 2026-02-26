@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { FadeInView } from "@/components/FadeInView";
+import { useAuth } from "@/contexts/AuthContext";
+import { LoginModal } from "@/components/LoginModal";
 
 const APP_VERSION = "1.0.0";
 const PRIVACY_POLICY_URL = "https://gpscamera.app/privacy";
@@ -58,6 +61,8 @@ function SectionHeader({ title }: { title: string }) {
 export default function SettingsTab() {
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const { isLoggedIn, user, logout } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const openUrl = async (url: string, label: string) => {
     const supported = await Linking.canOpenURL(url);
@@ -68,12 +73,67 @@ export default function SettingsTab() {
     }
   };
 
+  const handleAccountPress = () => {
+    if (isLoggedIn) {
+      Alert.alert(
+        `Signed in as ${user?.phone}`,
+        user?.tier === "pro" ? "Pro account — unlimited uploads." : "Standard account.",
+        [
+          { text: "Sign Out", style: "destructive", onPress: logout },
+          { text: "OK", style: "cancel" },
+        ],
+      );
+    } else {
+      setShowLoginModal(true);
+    }
+  };
+
   return (
     <FadeInView style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: bottomInset + 24 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Account */}
+        <SectionHeader title="Account" />
+        <View style={styles.card}>
+          <Pressable
+            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={handleAccountPress}
+          >
+            <View style={[styles.rowIcon, isLoggedIn && styles.rowIconAccount]}>
+              {isLoggedIn ? (
+                <Text style={styles.avatarText}>
+                  {user?.phone ? user.phone.replace(/\D/g, "").slice(-1) : "U"}
+                </Text>
+              ) : (
+                <Ionicons name="person-outline" size={18} color={Colors.light.primary} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>
+                {isLoggedIn ? (user?.phone ?? "Signed In") : "Sign In / Register"}
+              </Text>
+              {isLoggedIn && (
+                <Text style={styles.rowSub}>
+                  {user?.tier === "pro" ? "Pro" : "Standard"} · Tap to sign out
+                </Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={Colors.light.textTertiary} />
+          </Pressable>
+        </View>
+
+        {/* Data */}
+        <SectionHeader title="Data" />
+        <View style={styles.card}>
+          <SettingsRow
+            icon="trash-outline"
+            label="Recycle Bin"
+            onPress={() => router.push("/trash")}
+          />
+        </View>
+
         {/* App Info */}
         <SectionHeader title="About" />
         <View style={styles.card}>
@@ -108,6 +168,8 @@ export default function SettingsTab() {
           />
         </View>
       </ScrollView>
+
+      <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </FadeInView>
   );
 }
@@ -162,6 +224,20 @@ const styles = StyleSheet.create({
   },
   rowLabelDestructive: {
     color: "#FF453A",
+  },
+  rowIconAccount: {
+    backgroundColor: Colors.light.primary,
+  },
+  avatarText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  rowSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: 1,
   },
   rowRight: {
     flexDirection: "row",
