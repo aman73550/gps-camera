@@ -63,6 +63,8 @@ export function LoginModal({ visible, onClose }: Props) {
   useEffect(() => {
     if (googleResponse?.type === "success") {
       handleGoogleSuccess(googleResponse.authentication?.accessToken ?? "");
+    } else if (googleResponse?.type === "error") {
+      setError("Google sign-in failed. Make sure the redirect URI is added in Google Cloud Console: https://auth.expo.io/@Aman73550/gps-camera");
     }
   }, [googleResponse]);
 
@@ -90,6 +92,12 @@ export function LoginModal({ visible, onClose }: Props) {
     setError("");
     setIsLoading(true);
     try {
+      const available = await AppleAuthentication.isAvailableAsync();
+      if (!available) {
+        setError("Apple Sign-In is only available on a published iOS app, not in Expo Go.");
+        setIsLoading(false);
+        return;
+      }
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
