@@ -12,7 +12,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -361,17 +361,6 @@ export default function CameraTab() {
           </View>
         </View>
 
-        <PhotoOverlay
-          latitude={latitude}
-          longitude={longitude}
-          altitude={altitude}
-          address={address}
-          locationName={locationName}
-          plusCode={plusCode || computePlusCode(latitude, longitude)}
-          serialNumber={photos.length > 0 ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}` : "IMG-NEXT-001"}
-          timestamp={Date.now()}
-        />
-
         <View style={styles.bottomControls}>
           <View
             style={{
@@ -416,6 +405,16 @@ export default function CameraTab() {
           </View>
         </View>
       </CameraView>
+      <PhotoOverlay
+        latitude={latitude}
+        longitude={longitude}
+        altitude={altitude}
+        address={address}
+        locationName={locationName}
+        plusCode={plusCode || computePlusCode(latitude, longitude)}
+        serialNumber={photos.length > 0 ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}` : "IMG-NEXT-001"}
+        timestamp={Date.now()}
+      />
     </View>
   );
 }
