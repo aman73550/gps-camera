@@ -32,7 +32,7 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR } from "@/lib/upload";
+import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR, FILE_TOO_LARGE_ERROR, FORMAT_NOT_ALLOWED_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
 import { LoginModal } from "@/components/LoginModal";
 import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
@@ -103,7 +103,7 @@ export default function FilesTab() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = Platform.OS === "web" ? 84 : 49 + insets.bottom;
   const { photos, isLoading, refreshPhotos, filterPhotos, searchBySerial,
-    uploadCount, maxGuestUploads, tierLimits, removePhotos, isOnline, pendingCount } = usePhotos();
+    uploadCount, maxGuestUploads, tierLimits, compressionSettings, removePhotos, isOnline, pendingCount } = usePhotos();
   const { isLoggedIn, user } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -215,6 +215,7 @@ export default function FilesTab() {
         isLoggedIn,
         user?.phone,
         maxGuestUploads,
+        compressionSettings,
       );
       exitSelectMode();
       await refreshPhotos();
@@ -222,6 +223,8 @@ export default function FilesTab() {
       const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
       const dailyLimitHit = failed.some((f) => f.error === DAILY_LIMIT_ERROR);
       const monthlyLimitHit = failed.some((f) => f.error === MONTHLY_LIMIT_ERROR);
+      const fileTooLargeHit = failed.some((f) => f.error.startsWith(FILE_TOO_LARGE_ERROR));
+      const formatNotAllowedHit = failed.some((f) => f.error === FORMAT_NOT_ALLOWED_ERROR);
       if (networkHit) {
         Alert.alert("Offline", `${succeeded.length > 0 ? `${succeeded.length} uploaded. ` : ""}${failed.filter(f => f.error === NETWORK_ERROR).length} photo(s) queued for when you reconnect.`);
       } else if (guestLimitHit) {
@@ -233,6 +236,11 @@ export default function FilesTab() {
       } else if (monthlyLimitHit) {
         setLimitType("monthly");
         setShowLimitModal(true);
+      } else if (fileTooLargeHit) {
+        const maxMb = failed.find((f) => f.error.startsWith(FILE_TOO_LARGE_ERROR))?.error.split(":")[1] ?? "5";
+        Alert.alert("File Too Large", `One or more photos exceeded the maximum upload size of ${maxMb} MB after compression.\nAsk your administrator to increase the limit or lower the image quality setting.`);
+      } else if (formatNotAllowedHit) {
+        Alert.alert("Format Not Allowed", "The current server setting only accepts JPEG images. Please contact your administrator.");
       } else if (failed.length === 0) {
         Alert.alert("Upload Complete", `${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded successfully.`);
       } else {

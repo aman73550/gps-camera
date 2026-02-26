@@ -8,7 +8,7 @@ import {
   useEffect,
 } from "react";
 import * as Network from "expo-network";
-import { getServerBase } from "@/lib/upload";
+import { getServerBase, CompressionSettings, DEFAULT_COMPRESSION } from "@/lib/upload";
 import {
   PhotoRecord,
   getAllPhotos,
@@ -35,6 +35,7 @@ interface PhotoContextValue {
   uploadCount: number;
   maxGuestUploads: number;
   tierLimits: TierLimits;
+  compressionSettings: CompressionSettings;
   pendingCount: number;
   isOnline: boolean;
   refreshPhotos: () => Promise<void>;
@@ -60,6 +61,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
   const [uploadCount, setUploadCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
   const [tierLimits, setTierLimits] = useState<TierLimits>(DEFAULT_TIER_LIMITS);
+  const [compressionSettings, setCompressionSettings] = useState<CompressionSettings>(DEFAULT_COMPRESSION);
   const maxGuestUploads = tierLimits.guestLimit;
 
   const pendingCount = useMemo(
@@ -105,11 +107,20 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
     fetch(`${getServerBase()}/api/config/limits`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
-        if (data && data.guestLimit) {
+        if (!data) return;
+        if (data.guestLimit) {
           setTierLimits({
             guestLimit: data.guestLimit,
             standardDailyLimit: data.standardDailyLimit,
             standardMonthlyLimit: data.standardMonthlyLimit,
+          });
+        }
+        if (data.imageMaxWidth) {
+          setCompressionSettings({
+            maxWidth: data.imageMaxWidth,
+            quality: data.imageQuality ?? 50,
+            format: data.imageFormat ?? "auto",
+            maxFileMb: data.imageMaxFileMb ?? 5,
           });
         }
       })
@@ -198,6 +209,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       uploadCount,
       maxGuestUploads,
       tierLimits,
+      compressionSettings,
       pendingCount,
       isOnline,
       refreshPhotos,
@@ -218,6 +230,7 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       uploadCount,
       maxGuestUploads,
       tierLimits,
+      compressionSettings,
       pendingCount,
       isOnline,
       refreshPhotos,

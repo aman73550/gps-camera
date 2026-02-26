@@ -474,6 +474,60 @@
       </div>
 
       <div class="settings-section">
+        <h3>🖼️ Image Compression</h3>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">
+          Control how photos are compressed before uploading. Changes apply to all new uploads immediately.
+        </p>
+        <div class="form-row">
+          <label class="form-label">Max Image Width (px)</label>
+          <select id="img-max-width">
+            <option value="640">640 px — Small</option>
+            <option value="800">800 px — Medium-Small</option>
+            <option value="1000">1000 px — Medium (default)</option>
+            <option value="1200">1200 px — Large</option>
+            <option value="1600">1600 px — HD</option>
+            <option value="2000">2000 px — Full HD</option>
+          </select>
+          <p class="form-hint">Images wider than this are resized down, preserving aspect ratio.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Compression Quality</label>
+          <select id="img-quality">
+            <option value="30">30% — Lowest size</option>
+            <option value="50">50% — Balanced (default)</option>
+            <option value="70">70% — Good quality</option>
+            <option value="80">80% — High quality</option>
+            <option value="90">90% — Near lossless</option>
+            <option value="100">100% — No compression</option>
+          </select>
+          <p class="form-hint">Lower quality = smaller file size. Applies after resizing.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Image Format</label>
+          <select id="img-format">
+            <option value="auto">Auto (WebP on Android, JPEG elsewhere)</option>
+            <option value="jpeg">JPEG only (maximum compatibility)</option>
+            <option value="webp">WebP only (smallest files)</option>
+          </select>
+          <p class="form-hint">JPEG is the most compatible. WebP produces smaller files but older devices may not support it.</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Max Upload File Size</label>
+          <select id="img-max-file-mb">
+            <option value="2">2 MB</option>
+            <option value="5">5 MB (default)</option>
+            <option value="10">10 MB</option>
+            <option value="20">20 MB</option>
+          </select>
+          <p class="form-hint">Files larger than this after compression are rejected by the server.</p>
+        </div>
+        <div class="btn-row">
+          <button class="save-btn" onclick="saveCompressionSettings()">Save Compression Settings</button>
+        </div>
+        <p id="compression-saved" class="success-msg">✓ Compression settings saved.</p>
+      </div>
+
+      <div class="settings-section">
         <h3>📊 Upload Limits Per Tier</h3>
         <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">
           Control how many photos each tier can upload. Changes take effect immediately — no app restart needed.
@@ -796,7 +850,27 @@ async function loadSettings() {
   document.getElementById('guest-limit').value = s.guest_limit ?? 20;
   document.getElementById('standard-daily').value = s.standard_daily_limit ?? 50;
   document.getElementById('standard-monthly').value = s.standard_monthly_limit ?? 1000;
+  document.getElementById('img-max-width').value = s.image_max_width ?? 1000;
+  document.getElementById('img-quality').value = s.image_quality ?? 50;
+  document.getElementById('img-format').value = s.image_format ?? 'auto';
+  document.getElementById('img-max-file-mb').value = s.image_max_file_mb ?? 5;
   updateToggleLabel(); updateForceLabel();
+}
+
+async function saveCompressionSettings() {
+  const maxWidth = parseInt(document.getElementById('img-max-width').value) || 1000;
+  const quality = parseInt(document.getElementById('img-quality').value) || 50;
+  const format = document.getElementById('img-format').value || 'auto';
+  const maxFileMb = parseInt(document.getElementById('img-max-file-mb').value) || 5;
+  const r = await api('/api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify({ image_max_width: maxWidth, image_quality: quality, image_format: format, image_max_file_mb: maxFileMb })
+  });
+  if (r.ok) {
+    const msg = document.getElementById('compression-saved');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  }
 }
 
 async function saveLimitSettings() {

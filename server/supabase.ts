@@ -18,6 +18,10 @@ export interface AppSettings {
   guest_limit?: number;
   standard_daily_limit?: number;
   standard_monthly_limit?: number;
+  image_max_width?: number;
+  image_quality?: number;
+  image_format?: string;
+  image_max_file_mb?: number;
 }
 
 export async function getUserTier(

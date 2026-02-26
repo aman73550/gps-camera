@@ -12,12 +12,28 @@ import {
 import { Platform } from "react-native";
 
 export const NETWORK_ERROR = "NETWORK_OFFLINE";
+export const FILE_TOO_LARGE_ERROR = "FILE_TOO_LARGE";
+export const FORMAT_NOT_ALLOWED_ERROR = "FORMAT_NOT_ALLOWED";
 
 const MAX_GUEST_UPLOADS = 20;
 
 export const GUEST_LIMIT_ERROR = "GUEST_LIMIT_REACHED";
 export const DAILY_LIMIT_ERROR = "DAILY_LIMIT_REACHED";
 export const MONTHLY_LIMIT_ERROR = "MONTHLY_LIMIT_REACHED";
+
+export interface CompressionSettings {
+  maxWidth: number;
+  quality: number;
+  format: "auto" | "jpeg" | "webp";
+  maxFileMb: number;
+}
+
+export const DEFAULT_COMPRESSION: CompressionSettings = {
+  maxWidth: 1000,
+  quality: 50,
+  format: "auto",
+  maxFileMb: 5,
+};
 
 export function getServerBase(): string {
   if (Platform.OS === "web") return "";
@@ -29,33 +45,25 @@ export function getServerBase(): string {
   return "http://localhost:5000";
 }
 
-function getImageFormat(): {
-  format: ImageManipulator.SaveFormat;
-  mimeType: string;
-  ext: string;
-} {
-  if (Platform.OS === "android") {
-    return {
-      format: ImageManipulator.SaveFormat.WEBP,
-      mimeType: "image/webp",
-      ext: "webp",
-    };
+function resolveImageFormat(
+  setting: CompressionSettings["format"],
+): { format: ImageManipulator.SaveFormat; mimeType: string; ext: string } {
+  if (setting === "webp" || (setting === "auto" && Platform.OS === "android")) {
+    return { format: ImageManipulator.SaveFormat.WEBP, mimeType: "image/webp", ext: "webp" };
   }
-  return {
-    format: ImageManipulator.SaveFormat.JPEG,
-    mimeType: "image/jpeg",
-    ext: "jpg",
-  };
+  return { format: ImageManipulator.SaveFormat.JPEG, mimeType: "image/jpeg", ext: "jpg" };
 }
 
 export async function compressForUpload(
   uri: string,
+  settings: CompressionSettings = DEFAULT_COMPRESSION,
 ): Promise<{ uri: string; ext: string; mimeType: string }> {
-  const { format, mimeType, ext } = getImageFormat();
+  const { format, mimeType, ext } = resolveImageFormat(settings.format);
+  const quality = Math.max(0.01, Math.min(1, settings.quality / 100));
   const result = await ImageManipulator.manipulateAsync(
     uri,
-    [{ resize: { width: 1000 } }],
-    { compress: 0.5, format },
+    [{ resize: { width: settings.maxWidth } }],
+    { compress: quality, format },
   );
   return { uri: result.uri, ext, mimeType };
 }
@@ -99,12 +107,13 @@ export async function uploadPhoto(
   isLoggedIn = false,
   userPhone?: string | null,
   guestLimit = MAX_GUEST_UPLOADS,
+  compression: CompressionSettings = DEFAULT_COMPRESSION,
 ): Promise<void> {
   onProgress?.("Verifying…");
   await runVerificationChain(photo, isLoggedIn, guestLimit);
 
   onProgress?.("Compressing…");
-  const compressed = await compressForUpload(photo.uri);
+  const compressed = await compressForUpload(photo.uri, compression);
 
   onProgress?.("Uploading…");
   const formData = new FormData();
@@ -148,6 +157,8 @@ export async function uploadPhoto(
     if (errorCode === "GUEST_LIMIT") throw new Error(GUEST_LIMIT_ERROR);
     if (errorCode === "DAILY_LIMIT") throw new Error(DAILY_LIMIT_ERROR);
     if (errorCode === "MONTHLY_LIMIT") throw new Error(MONTHLY_LIMIT_ERROR);
+    if (errorCode === "FILE_TOO_LARGE") throw new Error(`${FILE_TOO_LARGE_ERROR}:${data.maxMb ?? 5}`);
+    if (errorCode === "IMAGE_FORMAT_NOT_ALLOWED") throw new Error(FORMAT_NOT_ALLOWED_ERROR);
     throw new Error(`Upload failed: ${JSON.stringify(data)}`);
   }
 
@@ -196,6 +207,7 @@ export async function uploadPhotoBatch(
   isLoggedIn = false,
   userPhone?: string | null,
   guestLimit = MAX_GUEST_UPLOADS,
+  compression: CompressionSettings = DEFAULT_COMPRESSION,
 ): Promise<{ succeeded: string[]; failed: { serial: string; error: string }[] }> {
   const succeeded: string[] = [];
   const failed: { serial: string; error: string }[] = [];
@@ -208,7 +220,7 @@ export async function uploadPhotoBatch(
       await runVerificationChain(photo, isLoggedIn, guestLimit);
 
       onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Compressing…`);
-      const compressed = await compressForUpload(photo.uri);
+      const compressed = await compressForUpload(photo.uri, compression);
 
       onProgress?.(i + 1, photos.length, `${photo.serialNumber}: Uploading…`);
       const formData = new FormData();
@@ -252,6 +264,8 @@ export async function uploadPhotoBatch(
         if (errorCode === "GUEST_LIMIT") throw new Error(GUEST_LIMIT_ERROR);
         if (errorCode === "DAILY_LIMIT") throw new Error(DAILY_LIMIT_ERROR);
         if (errorCode === "MONTHLY_LIMIT") throw new Error(MONTHLY_LIMIT_ERROR);
+        if (errorCode === "FILE_TOO_LARGE") throw new Error(`${FILE_TOO_LARGE_ERROR}:${data.maxMb ?? 5}`);
+        if (errorCode === "IMAGE_FORMAT_NOT_ALLOWED") throw new Error(FORMAT_NOT_ALLOWED_ERROR);
         throw new Error(`Upload failed: ${JSON.stringify(data)}`);
       }
 
@@ -282,7 +296,9 @@ export async function uploadPhotoBatch(
       if (
         message === GUEST_LIMIT_ERROR ||
         message === DAILY_LIMIT_ERROR ||
-        message === MONTHLY_LIMIT_ERROR
+        message === MONTHLY_LIMIT_ERROR ||
+        message.startsWith(FILE_TOO_LARGE_ERROR) ||
+        message === FORMAT_NOT_ALLOWED_ERROR
       )
         break;
     }

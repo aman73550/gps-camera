@@ -73,6 +73,12 @@ ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS guest_limit            
 ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS standard_daily_limit   INTEGER NOT NULL DEFAULT 50;
 ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS standard_monthly_limit INTEGER NOT NULL DEFAULT 1000;
 
+-- Image compression columns (added later — safe to re-run)
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS image_max_width    INTEGER NOT NULL DEFAULT 1000;
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS image_quality      INTEGER NOT NULL DEFAULT 50;
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS image_format       TEXT    NOT NULL DEFAULT 'auto';
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS image_max_file_mb  INTEGER NOT NULL DEFAULT 5;
+
 -- Seed default settings
 INSERT INTO public.app_settings (id, delete_after_months, auto_delete_enabled, required_version, force_update, guest_limit, standard_daily_limit, standard_monthly_limit)
 VALUES (1, 0, FALSE, '1.0.0', FALSE, 20, 50, 1000)

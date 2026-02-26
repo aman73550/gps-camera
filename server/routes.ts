@@ -39,7 +39,7 @@ const multerStorage = multer.diskStorage({
 
 const upload = multer({
   storage: multerStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ACCEPTED_MIME.has(file.mimetype)) {
       cb(null, true);
@@ -174,6 +174,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No file received" });
       }
 
+      const uploadSettings = await getAppSettings();
+      const maxFileMb = uploadSettings.image_max_file_mb ?? 5;
+      const allowedFormat = uploadSettings.image_format ?? "auto";
+
+      if (req.file.size > maxFileMb * 1024 * 1024) {
+        fs.unlinkSync(req.file.path);
+        return res.status(413).json({ error: "FILE_TOO_LARGE", maxMb: maxFileMb });
+      }
+
+      if (allowedFormat === "jpeg" && !["image/jpeg", "image/jpg"].includes(req.file.mimetype)) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: "IMAGE_FORMAT_NOT_ALLOWED", allowedFormat });
+      }
+
       const { serialNumber, latitude, longitude, address, locationName, plusCode, altitude } =
         req.body;
       const reqExt = req as Request & {
@@ -288,6 +302,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       guestLimit: settings.guest_limit ?? 20,
       standardDailyLimit: settings.standard_daily_limit ?? 50,
       standardMonthlyLimit: settings.standard_monthly_limit ?? 1000,
+      imageMaxWidth: settings.image_max_width ?? 1000,
+      imageQuality: settings.image_quality ?? 50,
+      imageFormat: settings.image_format ?? "auto",
+      imageMaxFileMb: settings.image_max_file_mb ?? 5,
     });
   });
 
