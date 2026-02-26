@@ -42,7 +42,7 @@ export function PhotoOverlay({
     <View style={styles.container}>
       {note ? (
         <View style={styles.noteBar}>
-          <Ionicons name="folder-open-outline" size={11} color="rgba(255,230,100,0.95)" />
+          <Ionicons name="folder-open-outline" size={13} color="rgba(255,230,100,0.95)" />
           <Text style={styles.noteText} numberOfLines={1}>{note}</Text>
         </View>
       ) : null}
@@ -53,7 +53,7 @@ export function PhotoOverlay({
           <View style={styles.qrWrapper}>
             <QRCodeView
               value={serialNumber || "GPS-CAMERA"}
-              size={90}
+              size={100}
               backgroundColor="#1a1a1a"
               color="#FFFFFF"
             />
@@ -85,17 +85,17 @@ export function PhotoOverlay({
 
           <View style={styles.bottomRow}>
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="weather-sunny" size={12} color="rgba(255,255,255,0.75)" />
+              <MaterialCommunityIcons name="weather-sunny" size={13} color="rgba(255,255,255,0.75)" />
               <Text style={styles.metaText}>—</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="water-percent" size={12} color="rgba(255,255,255,0.75)" />
+              <MaterialCommunityIcons name="water-percent" size={13} color="rgba(255,255,255,0.75)" />
               <Text style={styles.metaText}>—</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="image-filter-hdr" size={12} color="rgba(255,255,255,0.75)" />
+              <MaterialCommunityIcons name="image-filter-hdr" size={13} color="rgba(255,255,255,0.75)" />
               <Text style={styles.metaText}>{altStr}</Text>
             </View>
           </View>
@@ -114,105 +114,105 @@ const styles = StyleSheet.create({
   noteBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(15, 15, 15, 0.85)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 6,
+    backgroundColor: "rgba(15, 15, 15, 0.88)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 7,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,230,100,0.3)",
   },
   noteText: {
     color: "rgba(255,230,100,0.95)",
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     flex: 1,
     letterSpacing: 0.2,
   },
   overlayBox: {
     flexDirection: "row",
-    backgroundColor: "rgba(15, 15, 15, 0.90)",
-    paddingHorizontal: 10,
-    paddingVertical: 9,
+    backgroundColor: "rgba(15, 15, 15, 0.92)",
+    paddingHorizontal: 11,
+    paddingVertical: 12,
     alignItems: "center",
-    gap: 10,
+    gap: 11,
   },
   leftSection: {
-    width: 110,
+    width: 122,
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
+    gap: 6,
   },
   qrWrapper: {
     padding: 4,
     backgroundColor: "#1a1a1a",
-    borderRadius: 4,
+    borderRadius: 5,
   },
   serialText: {
     color: "#FFFFFF",
-    fontSize: 7.5,
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
     textAlign: "center",
   },
   dividerLine: {
     width: 1,
     alignSelf: "stretch",
-    backgroundColor: "rgba(255,255,255,0.18)",
-    marginVertical: 1,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginVertical: 2,
   },
   rightSection: {
     flex: 1,
     justifyContent: "center",
-    gap: 2.5,
+    gap: 3.5,
   },
   locationTitle: {
     color: "#FFFFFF",
-    fontSize: 13.5,
+    fontSize: 15,
     fontFamily: "Inter_700Bold",
-    lineHeight: 17,
+    lineHeight: 20,
   },
   addressText: {
-    color: "rgba(255,255,255,0.88)",
-    fontSize: 11,
+    color: "rgba(255,255,255,0.90)",
+    fontSize: 12.5,
     fontFamily: "Inter_400Regular",
-    lineHeight: 14.5,
+    lineHeight: 17,
   },
   plusCodeText: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 10.5,
+    color: "rgba(255,255,255,0.80)",
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     marginTop: 1,
   },
   nearText: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 10.5,
-    fontFamily: "Inter_500Medium",
+    color: "rgba(180,230,255,0.95)",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   dateText: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 10.5,
+    color: "rgba(255,255,255,0.80)",
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
   bottomRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 4,
-    gap: 6,
+    gap: 7,
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 4,
   },
   metaText: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 10.5,
+    color: "rgba(255,255,255,0.80)",
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "rgba(255,255,255,0.32)",
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
 });

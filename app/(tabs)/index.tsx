@@ -45,6 +45,43 @@ function openSettings() {
   }
 }
 
+const POI_PRIORITY: Record<string, number> = {
+  hospital: 1, clinic: 1, doctors: 1,
+  town_hall: 2, courthouse: 2, government: 2, police: 2, fire_station: 2, embassy: 2,
+  school: 3, college: 3, university: 3, library: 3,
+  museum: 4, monument: 4, memorial: 4, attraction: 4, viewpoint: 4,
+  place_of_worship: 5, temple: 5, mosque: 5, church: 5,
+  stadium: 6, cinema: 6, theatre: 6, community_centre: 6,
+  bank: 7, post_office: 7,
+};
+
+async function fetchNearbyPOI(lat: number, lon: number): Promise<string> {
+  if (Platform.OS === "web") return "";
+  try {
+    const radii = [300, 700];
+    for (const radius of radii) {
+      const query = `[out:json][timeout:8];(node["name"]["amenity"](around:${radius},${lat},${lon});node["name"]["tourism"](around:${radius},${lat},${lon});node["name"]["office"~"government|administrative|ngo|embassy"](around:${radius},${lat},${lon});node["name"]["historic"](around:${radius},${lat},${lon});way["name"]["amenity"~"hospital|school|college|university|stadium|courthouse|town_hall"](around:${radius},${lat},${lon}););out 10 center;`;
+      const resp = await fetch(
+        `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+        { headers: { "User-Agent": "GPSCameraApp/1.0" } }
+      );
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const elements: any[] = data.elements ?? [];
+      if (elements.length === 0) continue;
+      elements.sort((a, b) => {
+        const aType = a.tags?.amenity || a.tags?.tourism || a.tags?.office || a.tags?.historic || "";
+        const bType = b.tags?.amenity || b.tags?.tourism || b.tags?.office || b.tags?.historic || "";
+        return (POI_PRIORITY[aType] ?? 99) - (POI_PRIORITY[bType] ?? 99);
+      });
+      const best = elements[0];
+      const name = best.tags?.name || best.tags?.["name:en"] || "";
+      if (name) return name;
+    }
+  } catch {}
+  return "";
+}
+
 export default function CameraTab() {
   const insets = useSafeAreaInsets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -121,7 +158,10 @@ export default function CameraTab() {
       const plus = computePlusCode(lat, lon);
       setPlusCode(plus);
       try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+        const [reverseGeocode, poiName] = await Promise.all([
+          Location.reverseGeocodeAsync({ latitude: lat, longitude: lon }),
+          fetchNearbyPOI(lat, lon),
+        ]);
         if (reverseGeocode.length > 0) {
           const place = reverseGeocode[0];
           const nameParts = [
@@ -141,17 +181,19 @@ export default function CameraTab() {
           ].filter(Boolean);
           const addr = addrParts.join(", ") || "Unknown location";
 
-          const rawName = place.name ?? "";
-          const nearParts: string[] = [];
-          if (rawName && !/^\d+$/.test(rawName) && rawName !== place.street) {
-            nearParts.push(rawName);
-          }
-          if (place.district && place.district !== (place.city || place.district)) {
-            nearParts.push(place.district);
-          } else if (place.subregion && place.subregion !== place.region) {
-            nearParts.push(place.subregion);
-          }
-          const near = nearParts.join(", ") || place.district || place.subregion || "";
+          const near = poiName || (() => {
+            const rawName = place.name ?? "";
+            const nearParts: string[] = [];
+            if (rawName && !/^\d+$/.test(rawName) && rawName !== place.street) {
+              nearParts.push(rawName);
+            }
+            if (place.district && place.district !== place.city) {
+              nearParts.push(place.district);
+            } else if (place.subregion && place.subregion !== place.region) {
+              nearParts.push(place.subregion);
+            }
+            return nearParts.join(", ") || place.street || "";
+          })();
 
           setLocationName(name);
           setAddress(addr);
