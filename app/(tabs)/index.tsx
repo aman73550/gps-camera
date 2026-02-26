@@ -175,13 +175,22 @@ export default function CameraTab() {
       const id = generateId();
       const now = new Date();
 
-      const compressed = await ImageManipulator.manipulateAsync(
+      const resized = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{ resize: { width: 1200 } }],
-        {
-          compress: 0.55,
-          format: ImageManipulator.SaveFormat.JPEG,
-        },
+        { format: ImageManipulator.SaveFormat.JPEG },
+      );
+
+      const targetHeight = Math.round(1200 * (4 / 3));
+      const cropActions =
+        resized.height > targetHeight
+          ? [{ crop: { originX: 0, originY: Math.round((resized.height - targetHeight) / 2), width: 1200, height: targetHeight } }]
+          : ([] as { crop: { originX: number; originY: number; width: number; height: number } }[]);
+
+      const compressed = await ImageManipulator.manipulateAsync(
+        resized.uri,
+        cropActions,
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
       );
 
       const fileName = `${serialNumber}.jpg`;
