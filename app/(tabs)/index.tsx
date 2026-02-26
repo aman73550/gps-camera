@@ -96,6 +96,7 @@ export default function CameraTab() {
   const [nearPlace, setNearPlace] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
   const [facing, setFacing] = useState<"front" | "back">("back");
+  const [flash, setFlash] = useState<"off" | "on" | "auto">("off");
   const [note, setNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
 
@@ -318,8 +319,20 @@ export default function CameraTab() {
     }
   }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, nearPlace, note, addPhoto]);
 
+  const cycleFlash = useCallback(() => {
+    setFlash((prev) => {
+      if (prev === "off") return "on";
+      if (prev === "on") return "auto";
+      return "off";
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
   const toggleCamera = useCallback(() => {
-    setFacing((prev) => (prev === "back" ? "front" : "back"));
+    setFacing((prev) => {
+      if (prev === "back") { setFlash("off"); return "front"; }
+      return "back";
+    });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
@@ -430,14 +443,35 @@ export default function CameraTab() {
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
             facing={facing}
+            flash={flash}
           />
 
-          {/* Top overlay bar — GPS LIVE, count, auth */}
+          {/* Top overlay bar — flash, count, auth */}
           <View style={styles.topBar}>
-            <View style={styles.gpsLiveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.gpsLiveText}>GPS LIVE</Text>
-            </View>
+            {facing === "back" ? (
+              <Pressable
+                style={({ pressed }) => [styles.flashBtn, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={cycleFlash}
+                testID="flash-button"
+              >
+                <Ionicons
+                  name={
+                    flash === "on" ? "flash" :
+                    flash === "auto" ? "flash-outline" :
+                    "flash-off"
+                  }
+                  size={22}
+                  color={flash === "on" ? "#FFD600" : flash === "auto" ? "#FFF" : "rgba(255,255,255,0.6)"}
+                />
+                {flash === "auto" && (
+                  <View style={styles.flashAutoTag}>
+                    <Text style={styles.flashAutoText}>A</Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : (
+              <View style={styles.flashBtn} />
+            )}
             <View style={styles.topRight}>
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>
@@ -736,26 +770,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
   },
-  gpsLiveBadge: {
-    flexDirection: "row",
+  flashBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
+    justifyContent: "center",
   },
-  liveDot: {
-    width: 8,
-    height: 8,
+  flashAutoTag: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    backgroundColor: "#FFD600",
     borderRadius: 4,
-    backgroundColor: "#34A853",
+    paddingHorizontal: 2,
+    paddingVertical: 0,
   },
-  gpsLiveText: {
-    color: "#FFF",
-    fontSize: 11,
+  flashAutoText: {
+    color: "#000",
+    fontSize: 8,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
+    lineHeight: 11,
   },
   noteInputRow: {
     flexDirection: "row",
