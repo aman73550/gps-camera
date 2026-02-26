@@ -98,36 +98,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── Auth: login / register by phone ─────────────────────────
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { phone } = req.body as { phone?: string };
-      if (!phone || typeof phone !== "string") {
-        return res.status(400).json({ error: "Phone number is required" });
+      // Accept phone, email, or a generic identifier
+      const body = req.body as { phone?: string; email?: string; identifier?: string; name?: string; provider?: string };
+      const raw = body.identifier ?? body.email ?? body.phone ?? "";
+      if (!raw || typeof raw !== "string") {
+        return res.status(400).json({ error: "Phone number or email is required" });
       }
-      const digits = phone.replace(/\D/g, "");
-      if (digits.length < 7 || digits.length > 15) {
-        return res.status(400).json({ error: "Invalid phone number format" });
+
+      // Only validate format for pure phone-number logins
+      const isEmail = raw.includes("@");
+      const isPhone = !isEmail;
+      if (isPhone) {
+        const digits = raw.replace(/\D/g, "");
+        if (digits.length < 7 || digits.length > 15) {
+          return res.status(400).json({ error: "Invalid phone number format" });
+        }
       }
+
+      const identifier = raw.trim();
 
       let tier: "standard" | "pro" = "standard";
       if (supabase) {
         const { data, error } = await supabase
           .from("profiles")
-          .upsert({ phone: phone.trim() }, { onConflict: "phone", ignoreDuplicates: true })
+          .upsert({ phone: identifier }, { onConflict: "phone", ignoreDuplicates: true })
           .select("tier")
           .single();
         if (!error && data?.tier) {
           tier = data.tier as "standard" | "pro";
         } else if (error && error.code !== "23505") {
-          // Try a plain select if upsert fails
           const { data: existing } = await supabase
             .from("profiles")
             .select("tier")
-            .eq("phone", phone.trim())
+            .eq("phone", identifier)
             .single();
           if (existing?.tier) tier = existing.tier as "standard" | "pro";
         }
       }
 
-      return res.json({ success: true, phone: phone.trim(), tier });
+      return res.json({ success: true, phone: identifier, tier, provider: body.provider ?? "phone" });
     } catch (err) {
       console.error("Auth login error:", err);
       return res.status(500).json({ error: "Server error during login" });

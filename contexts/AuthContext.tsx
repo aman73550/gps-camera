@@ -31,7 +31,7 @@ interface AuthContextValue {
   loginModalVisible: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
-  login: (phone: string) => Promise<void>;
+  login: (phone: string, displayName?: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -83,17 +83,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const login = useCallback(async (phone: string) => {
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) {
-      throw new Error("Please enter a valid mobile number.");
+  const login = useCallback(async (phone: string, displayName?: string) => {
+    const isEmail = phone.includes("@");
+    if (!isEmail) {
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length < 7) {
+        throw new Error("Please enter a valid mobile number.");
+      }
     }
 
     const result = await apiLogin(phone);
 
-    const last4 = digits.slice(-4);
+    const last4 = phone.replace(/\D/g, "").slice(-4);
     const u: AuthUser = {
-      name: `User ${last4}`,
+      name: displayName ?? (isEmail ? phone.split("@")[0] : `User ${last4}`),
       phone: result.phone,
       tier: result.tier ?? "standard",
     };
