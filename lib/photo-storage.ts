@@ -86,6 +86,13 @@ export async function getPhotoBySerial(
   );
 }
 
+export async function getPhotoByUri(
+  uri: string,
+): Promise<PhotoRecord | undefined> {
+  const photos = await getAllPhotos();
+  return photos.find((p) => p.uri === uri);
+}
+
 export async function savePhotoRecord(record: PhotoRecord): Promise<void> {
   const photos = await getAllPhotos();
   photos.push(record);

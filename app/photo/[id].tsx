@@ -22,7 +22,7 @@ import { usePhotos } from "@/contexts/PhotoContext";
 import { QRCodeView } from "@/components/QRCodeView";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhoto } from "@/lib/upload";
+import { uploadPhoto, GUEST_LIMIT_ERROR } from "@/lib/upload";
 
 function PhotoDetailOverlay({ photo }: { photo: PhotoRecord }) {
   return (
@@ -123,8 +123,14 @@ export default function PhotoDetailScreen() {
       Alert.alert("Upload Complete", `${photo.serialNumber} uploaded successfully.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload failed.";
-      if (msg.includes("Unauthorized")) {
-        Alert.alert("Unauthorized File", msg);
+      if (msg === GUEST_LIMIT_ERROR) {
+        Alert.alert(
+          "Upload Limit Reached",
+          "You have used all 20 guest uploads. Login to continue uploading without limits.",
+          [{ text: "OK" }],
+        );
+      } else if (msg.includes("Unauthorized") || msg.includes("Mismatch")) {
+        Alert.alert("Security Verification Failed", msg);
       } else {
         Alert.alert("Upload Failed", msg);
       }

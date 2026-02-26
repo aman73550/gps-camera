@@ -25,7 +25,7 @@ import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhotoBatch } from "@/lib/upload";
+import { uploadPhotoBatch, GUEST_LIMIT_ERROR } from "@/lib/upload";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GRID_GAP = 2;
@@ -170,7 +170,14 @@ export default function FilesTab() {
         (current, total, status) => setBatchStatus(`${current}/${total} — ${status}`),
       );
       exitSelectMode();
-      if (failed.length === 0) {
+      const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
+      if (guestLimitHit) {
+        Alert.alert(
+          "Upload Limit Reached",
+          `You have used all 20 guest uploads.\n\n${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded before the limit.\n\nLogin to continue uploading without limits.`,
+          [{ text: "OK" }],
+        );
+      } else if (failed.length === 0) {
         Alert.alert("Upload Complete", `${succeeded.length} photo${succeeded.length !== 1 ? "s" : ""} uploaded successfully.`);
       } else {
         Alert.alert("Upload Partial", `${succeeded.length} succeeded, ${failed.length} failed.\n\n${failed.map(f => `${f.serial}: ${f.error}`).join("\n")}`);

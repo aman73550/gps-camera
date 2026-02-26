@@ -25,7 +25,6 @@ import {
   generateId,
   ensurePhotosDirectory,
   getPhotosDirectory,
-  incrementUploadCount,
   computePlusCode,
   PhotoRecord,
 } from "@/lib/photo-storage";
@@ -56,6 +55,7 @@ export default function CameraTab() {
   const [facing, setFacing] = useState<"front" | "back">("back");
 
   const { addPhoto, photos, uploadCount, maxGuestUploads } = usePhotos();
+  const photoCount = photos.length;
 
   useEffect(() => {
     if (photos.length > 0 && !lastCapturedUri) {
@@ -154,14 +154,6 @@ export default function CameraTab() {
   const capturePhoto = useCallback(async () => {
     if (!cameraRef.current || isCapturing) return;
 
-    if (uploadCount >= maxGuestUploads) {
-      Alert.alert(
-        "Upload Limit Reached",
-        `You have reached the maximum of ${maxGuestUploads} photos as a guest.`,
-      );
-      return;
-    }
-
     setIsCapturing(true);
 
     try {
@@ -204,8 +196,6 @@ export default function CameraTab() {
       const destUri = `${getPhotosDirectory()}${fileName}`;
       await FileSystem.moveAsync({ from: compressed.uri, to: destUri });
 
-      await incrementUploadCount();
-
       const record: PhotoRecord = {
         id,
         serialNumber,
@@ -230,7 +220,7 @@ export default function CameraTab() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, addPhoto, uploadCount, maxGuestUploads]);
+  }, [isCapturing, latitude, longitude, altitude, address, locationName, plusCode, addPhoto]);
 
   const toggleCamera = useCallback(() => {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
@@ -351,7 +341,7 @@ export default function CameraTab() {
           <View style={styles.topRight}>
             <View style={styles.countBadge}>
               <Text style={styles.countText}>
-                {uploadCount}/{maxGuestUploads}
+                {photoCount} {photoCount === 1 ? "photo" : "photos"}
               </Text>
             </View>
             <Pressable

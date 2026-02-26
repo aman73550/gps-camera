@@ -1,15 +1,28 @@
 import * as ImageManipulator from "expo-image-manipulator";
-import { isWhitelisted, PhotoRecord } from "./photo-storage";
+import {
+  isWhitelisted,
+  getPhotoByUri,
+  getUploadCount,
+  incrementUploadCount,
+  getPhotosDirectory,
+  PhotoRecord,
+} from "./photo-storage";
 import { Platform } from "react-native";
 
-const SERVER_BASE =
-  Platform.OS === "web"
-    ? `http://localhost:5000`
-    : `http://${process.env.EXPO_PUBLIC_DOMAIN || "localhost:5000"}`;
+const MAX_GUEST_UPLOADS = 20;
+
+export const GUEST_LIMIT_ERROR = "GUEST_LIMIT_REACHED";
+
+function getServerBase(): string {
+  if (Platform.OS === "web") return "http://localhost:5000";
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain) return `http://${domain}`;
+  return "http://localhost:5000";
+}
 
 export async function compressForUpload(
   uri: string,
-): Promise<{ uri: string; size?: number }> {
+): Promise<{ uri: string }> {
   const result = await ImageManipulator.manipulateAsync(
     uri,
     [{ resize: { width: 1000 } }],
@@ -18,22 +31,48 @@ export async function compressForUpload(
   return result;
 }
 
+export async function runVerificationChain(photo: PhotoRecord): Promise<void> {
+  // ── Lock 1: Path check — must be inside app's private directory ──────────
+  const photosDir = getPhotosDirectory();
+  if (!photo.uri.startsWith(photosDir)) {
+    throw new Error("Unauthorized File: Image is outside the app's secure storage.");
+  }
+
+  // ── Lock 2: Database (Whitelist) check — must have a DB entry ────────────
+  const whitelisted = await isWhitelisted(photo.uri);
+  if (!whitelisted) {
+    throw new Error("Unauthorized File: No database record found for this image.");
+  }
+
+  // ── Lock 3: Metadata match — serial number in DB must match the record ───
+  const dbRecord = await getPhotoByUri(photo.uri);
+  if (!dbRecord) {
+    throw new Error("Unauthorized File: Image record not found in database.");
+  }
+  if (dbRecord.serialNumber !== photo.serialNumber) {
+    throw new Error(
+      `Metadata Mismatch: Serial number "${photo.serialNumber}" does not match database record "${dbRecord.serialNumber}".`,
+    );
+  }
+
+  // ── Lock 4: Tier check — guest upload limit ───────────────────────────────
+  const currentUploads = await getUploadCount();
+  if (currentUploads >= MAX_GUEST_UPLOADS) {
+    throw new Error(GUEST_LIMIT_ERROR);
+  }
+}
+
 export async function uploadPhoto(
   photo: PhotoRecord,
   onProgress?: (status: string) => void,
 ): Promise<void> {
   onProgress?.("Verifying…");
-
-  const allowed = await isWhitelisted(photo.uri);
-  if (!allowed) {
-    throw new Error("Unauthorized File: This image is not registered in the app database.");
-  }
+  await runVerificationChain(photo);
 
   onProgress?.("Compressing…");
   const compressed = await compressForUpload(photo.uri);
 
   onProgress?.("Uploading…");
-
   const formData = new FormData();
   formData.append("photo", {
     uri: compressed.uri,
@@ -46,7 +85,7 @@ export async function uploadPhoto(
   formData.append("address", photo.address);
   formData.append("timestamp", String(photo.timestamp));
 
-  const response = await fetch(`${SERVER_BASE}/api/upload`, {
+  const response = await fetch(`${getServerBase()}/api/upload`, {
     method: "POST",
     body: formData,
   });
@@ -56,6 +95,7 @@ export async function uploadPhoto(
     throw new Error(`Upload failed: ${body || response.statusText}`);
   }
 
+  await incrementUploadCount();
   onProgress?.("Done");
 }
 
@@ -74,10 +114,9 @@ export async function uploadPhotoBatch(
       );
       succeeded.push(photo.serialNumber);
     } catch (err: unknown) {
-      failed.push({
-        serial: photo.serialNumber,
-        error: err instanceof Error ? err.message : "Unknown error",
-      });
+      const message = err instanceof Error ? err.message : "Unknown error";
+      failed.push({ serial: photo.serialNumber, error: message });
+      if (message === GUEST_LIMIT_ERROR) break;
     }
   }
 
