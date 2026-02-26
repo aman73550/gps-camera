@@ -32,7 +32,7 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoRecord } from "@/lib/photo-storage";
-import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR, FILE_TOO_LARGE_ERROR, FORMAT_NOT_ALLOWED_ERROR } from "@/lib/upload";
+import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR, FILE_TOO_LARGE_ERROR, FORMAT_NOT_ALLOWED_ERROR, ACCOUNT_BANNED_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
 import { LoginModal } from "@/components/LoginModal";
 import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
@@ -220,12 +220,15 @@ export default function FilesTab() {
       exitSelectMode();
       await refreshPhotos();
       const networkHit = failed.some((f) => f.error === NETWORK_ERROR);
+      const bannedHit = failed.some((f) => f.error === ACCOUNT_BANNED_ERROR);
       const guestLimitHit = failed.some((f) => f.error === GUEST_LIMIT_ERROR);
       const dailyLimitHit = failed.some((f) => f.error === DAILY_LIMIT_ERROR);
       const monthlyLimitHit = failed.some((f) => f.error === MONTHLY_LIMIT_ERROR);
       const fileTooLargeHit = failed.some((f) => f.error.startsWith(FILE_TOO_LARGE_ERROR));
       const formatNotAllowedHit = failed.some((f) => f.error === FORMAT_NOT_ALLOWED_ERROR);
-      if (networkHit) {
+      if (bannedHit) {
+        Alert.alert("Account Suspended", "Your account has been suspended by an administrator. Please contact support for assistance.", [{ text: "OK" }]);
+      } else if (networkHit) {
         Alert.alert("Offline", `${succeeded.length > 0 ? `${succeeded.length} uploaded. ` : ""}${failed.filter(f => f.error === NETWORK_ERROR).length} photo(s) queued for when you reconnect.`);
       } else if (guestLimitHit) {
         setLimitType("guest");

@@ -239,6 +239,62 @@ export async function rejectUploadDeletion(serialNumber: string): Promise<boolea
   return true;
 }
 
+export async function isUserBanned(phone: string): Promise<boolean> {
+  if (!supabase || !phone) return false;
+  const { data } = await supabase
+    .from("profiles")
+    .select("banned")
+    .eq("phone", phone)
+    .single();
+  return data?.banned === true;
+}
+
+export async function flagUpload(
+  serial: string,
+  flagged: boolean,
+  reason?: string,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("uploads")
+    .update({ flagged, flag_reason: flagged ? (reason || null) : null })
+    .eq("serial_number", serial);
+  return !error;
+}
+
+export async function warnUser(
+  phone: string,
+  message: string,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ warned: true, warn_message: message, warned_at: new Date().toISOString() })
+    .eq("phone", decodeURIComponent(phone));
+  return !error;
+}
+
+export async function banUser(
+  phone: string,
+  reason: string,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ banned: true, ban_reason: reason, banned_at: new Date().toISOString() })
+    .eq("phone", decodeURIComponent(phone));
+  return !error;
+}
+
+export async function unbanUser(phone: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ banned: false, ban_reason: null, banned_at: null })
+    .eq("phone", decodeURIComponent(phone));
+  return !error;
+}
+
 export async function checkSupabaseConnection(): Promise<boolean> {
   if (!supabase) {
     console.log("ℹ️  Supabase not configured (no SUPABASE_URL/SUPABASE_ANON_KEY)");

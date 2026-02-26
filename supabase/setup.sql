@@ -14,6 +14,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 CREATE INDEX IF NOT EXISTS idx_profiles_phone ON public.profiles(phone);
 
+-- Moderation columns for profiles (safe to re-run)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS warned      BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS banned      BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS warn_message TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ban_reason   TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS warned_at    TIMESTAMPTZ;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS banned_at    TIMESTAMPTZ;
+
 -- RLS: allow anon key full access (app uses anon key for all ops)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all" ON public.profiles;
@@ -47,6 +55,11 @@ ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS pending_delete       BOOLEAN
 ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS delete_requested_at  TIMESTAMPTZ;
 ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS delete_requested_by  TEXT;
 CREATE INDEX IF NOT EXISTS idx_uploads_pending_delete ON public.uploads(pending_delete) WHERE pending_delete = TRUE;
+
+-- Moderation columns for uploads (safe to re-run)
+ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS flagged     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS flag_reason TEXT;
+CREATE INDEX IF NOT EXISTS idx_uploads_flagged ON public.uploads(flagged) WHERE flagged = TRUE;
 
 ALTER TABLE public.uploads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all" ON public.uploads;

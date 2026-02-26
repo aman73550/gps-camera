@@ -20,6 +20,7 @@ const MAX_GUEST_UPLOADS = 20;
 export const GUEST_LIMIT_ERROR = "GUEST_LIMIT_REACHED";
 export const DAILY_LIMIT_ERROR = "DAILY_LIMIT_REACHED";
 export const MONTHLY_LIMIT_ERROR = "MONTHLY_LIMIT_REACHED";
+export const ACCOUNT_BANNED_ERROR = "ACCOUNT_BANNED";
 
 export interface CompressionSettings {
   maxWidth: number;
@@ -154,6 +155,7 @@ export async function uploadPhoto(
   if (!response.ok) {
     const data = await response.json().catch(() => ({ error: response.statusText }));
     const errorCode = data?.error;
+    if (errorCode === "BANNED") throw new Error(ACCOUNT_BANNED_ERROR);
     if (errorCode === "GUEST_LIMIT") throw new Error(GUEST_LIMIT_ERROR);
     if (errorCode === "DAILY_LIMIT") throw new Error(DAILY_LIMIT_ERROR);
     if (errorCode === "MONTHLY_LIMIT") throw new Error(MONTHLY_LIMIT_ERROR);
@@ -261,6 +263,7 @@ export async function uploadPhotoBatch(
       if (!response.ok) {
         const data = await response.json().catch(() => ({ error: response.statusText }));
         const errorCode = data?.error;
+        if (errorCode === "BANNED") throw new Error(ACCOUNT_BANNED_ERROR);
         if (errorCode === "GUEST_LIMIT") throw new Error(GUEST_LIMIT_ERROR);
         if (errorCode === "DAILY_LIMIT") throw new Error(DAILY_LIMIT_ERROR);
         if (errorCode === "MONTHLY_LIMIT") throw new Error(MONTHLY_LIMIT_ERROR);

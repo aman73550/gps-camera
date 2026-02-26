@@ -16,6 +16,11 @@ import {
   getPendingDeletions,
   confirmUploadDeletion,
   rejectUploadDeletion,
+  isUserBanned,
+  flagUpload,
+  warnUser,
+  banUser,
+  unbanUser,
   UploadRecord,
 } from "./supabase";
 
@@ -58,6 +63,13 @@ async function tierCheckMiddleware(
     const userPhone = req.headers["x-user-phone"] as string | undefined;
     const isGuestHeader = req.headers["x-is-guest"] as string | undefined;
     const isGuest = isGuestHeader === "true" || !userPhone;
+
+    if (userPhone && !isGuest) {
+      const banned = await isUserBanned(userPhone);
+      if (banned) {
+        return res.status(403).json({ error: "BANNED", message: "Your account has been suspended. Contact support." });
+      }
+    }
 
     const check = await checkUploadLimit(userPhone || null, isGuest);
     if (!check.allowed) {
@@ -403,13 +415,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const offset = (page - 1) * limit;
 
-      const { data, count } = await supabase
+      const filter = (req.query.filter as string) || "all";
+      let query = supabase
         .from("uploads")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
+      if (filter === "flagged") query = query.eq("flagged", true);
+      if (filter === "clean") query = query.eq("flagged", false);
 
-      res.json({ data: data || [], total: count || 0, page, limit });
+      const { data: uploads, count } = await query;
+
+      const phones = [...new Set((uploads || []).filter(u => u.user_phone).map(u => u.user_phone))];
+      let profileMap: Record<string, { warned: boolean; banned: boolean; ban_reason?: string; warn_message?: string; tier?: string }> = {};
+      if (phones.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("phone,tier,warned,banned,ban_reason,warn_message").in("phone", phones);
+        (profiles || []).forEach(p => { profileMap[p.phone] = p; });
+      }
+
+      const data = (uploads || []).map(u => ({
+        ...u,
+        user_profile: u.user_phone ? (profileMap[u.user_phone] || null) : null,
+      }));
+
+      const { count: flaggedCount } = await supabase.from("uploads").select("*", { count: "exact", head: true }).eq("flagged", true);
+      const { count: bannedCount } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("banned", true);
+
+      res.json({ data, total: count || 0, page, limit, flaggedCount: flaggedCount || 0, bannedCount: bannedCount || 0 });
     },
   );
 
@@ -431,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     adminAuth,
     async (req: Request, res: Response) => {
       if (!supabase) return res.json({ error: "Supabase not configured" });
-      const { phone } = req.params;
+      const phone = req.params["phone"] as string;
       const { tier } = req.body;
       if (!["standard", "pro"].includes(tier)) {
         return res.status(400).json({ error: "Invalid tier" });
@@ -442,6 +474,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .eq("phone", decodeURIComponent(phone));
       if (error) return res.status(500).json({ error: error.message });
       res.json({ success: true });
+    },
+  );
+
+  app.get(
+    "/api/admin/image/:filename",
+    adminAuth,
+    (req: Request, res: Response) => {
+      const filename = path.basename(req.params["filename"] as string);
+      const filePath = path.join(uploadsDir, filename);
+      if (!fs.existsSync(filePath)) return res.status(404).send("Not found");
+      res.sendFile(filePath);
+    },
+  );
+
+  app.post(
+    "/api/admin/uploads/:serial/flag",
+    adminAuth,
+    async (req: Request, res: Response) => {
+      const serial = req.params["serial"] as string;
+      const { flagged, reason } = req.body;
+      const ok = await flagUpload(serial, !!flagged, reason);
+      ok ? res.json({ success: true }) : res.status(500).json({ error: "Failed to flag upload" });
+    },
+  );
+
+  app.delete(
+    "/api/admin/uploads/:serial",
+    adminAuth,
+    async (req: Request, res: Response) => {
+      if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+      const serial = req.params["serial"] as string;
+      const { data } = await supabase.from("uploads").select("file_path").eq("serial_number", serial).single();
+      if (data?.file_path) {
+        const fullPath = path.join(uploadsDir, path.basename(data.file_path));
+        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+      }
+      const { error } = await supabase.from("uploads").delete().eq("serial_number", serial);
+      error ? res.status(500).json({ error: error.message }) : res.json({ success: true });
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:phone/warn",
+    adminAuth,
+    async (req: Request, res: Response) => {
+      const phone = req.params["phone"] as string;
+      const { message } = req.body;
+      if (!message) return res.status(400).json({ error: "Warning message required" });
+      const ok = await warnUser(decodeURIComponent(phone), message);
+      ok ? res.json({ success: true }) : res.status(500).json({ error: "Failed to warn user" });
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:phone/ban",
+    adminAuth,
+    async (req: Request, res: Response) => {
+      const phone = req.params["phone"] as string;
+      const { reason } = req.body;
+      if (!reason) return res.status(400).json({ error: "Ban reason required" });
+      const ok = await banUser(decodeURIComponent(phone), reason);
+      ok ? res.json({ success: true }) : res.status(500).json({ error: "Failed to ban user" });
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:phone/unban",
+    adminAuth,
+    async (req: Request, res: Response) => {
+      const phone = req.params["phone"] as string;
+      const ok = await unbanUser(decodeURIComponent(phone));
+      ok ? res.json({ success: true }) : res.status(500).json({ error: "Failed to unban user" });
     },
   );
 
