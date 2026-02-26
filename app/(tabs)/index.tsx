@@ -27,6 +27,7 @@ import { LoginModal } from "@/components/LoginModal";
 import { FadeInView } from "@/components/FadeInView";
 import { Image } from "expo-image";
 import { router } from "expo-router";
+import { captureRef } from "react-native-view-shot";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
 import {
   generateSerialNumber,
@@ -88,6 +89,7 @@ export default function CameraTab() {
   const [locationPermission, requestLocationPermission] =
     Location.useForegroundPermissions();
   const cameraRef = useRef<CameraView>(null);
+  const compositeRef = useRef<View>(null);
 
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
@@ -97,6 +99,7 @@ export default function CameraTab() {
   const [plusCode, setPlusCode] = useState("");
   const [nearPlace, setNearPlace] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
+  const [frozenUri, setFrozenUri] = useState<string | null>(null);
   const [lastCapturedUri, setLastCapturedUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [flash, setFlash] = useState<"off" | "on" | "auto">("off");
@@ -248,10 +251,11 @@ export default function CameraTab() {
     try {
       await ensurePhotosDirectory();
 
+      // Step 1 — fire shutter + haptic + get raw frame in parallel
       const [, photo] = await Promise.all([
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
         cameraRef.current.takePictureAsync({
-          quality: 0.8,
+          quality: 0.85,
           skipProcessing: false,
         }),
       ]);
@@ -260,6 +264,28 @@ export default function CameraTab() {
         setIsCapturing(false);
         return;
       }
+
+      // Step 2 — freeze the live preview with the exact captured frame
+      setFrozenUri(photo.uri);
+      // wait one frame for the frozen image to render over the camera
+      await new Promise((r) => setTimeout(r, 120));
+
+      // Step 3 — screenshot the compositeRef (frozen frame + overlay, no UI controls)
+      let compositeUri: string = photo.uri;
+      if (compositeRef.current && Platform.OS !== "web") {
+        try {
+          compositeUri = await captureRef(compositeRef, {
+            format: "jpg",
+            quality: 0.95,
+            result: "tmpfile",
+          });
+        } catch {
+          compositeUri = photo.uri;
+        }
+      }
+
+      // Step 4 — unfreeze
+      setFrozenUri(null);
 
       await new Promise<void>((resolve, reject) => {
         InteractionManager.runAfterInteractions(async () => {
@@ -273,22 +299,11 @@ export default function CameraTab() {
               ? ImageManipulator.SaveFormat.WEBP
               : ImageManipulator.SaveFormat.JPEG;
 
-            const resized = await ImageManipulator.manipulateAsync(
-              photo.uri,
-              [{ resize: { width: 1200 } }],
-              { format: imgFormat },
-            );
-
-            const targetHeight = Math.round(1200 * (4 / 3));
-            const cropActions =
-              resized.height > targetHeight
-                ? [{ crop: { originX: 0, originY: Math.round((resized.height - targetHeight) / 2), width: 1200, height: targetHeight } }]
-                : ([] as { crop: { originX: number; originY: number; width: number; height: number } }[]);
-
+            // Compress the composite (stripe already burned in)
             const compressed = await ImageManipulator.manipulateAsync(
-              resized.uri,
-              cropActions,
-              { compress: 0.6, format: imgFormat },
+              compositeUri,
+              [{ resize: { width: 1200 } }],
+              { compress: 0.7, format: imgFormat },
             );
 
             const fileName = `${serialNumber}.${useWebP ? "webp" : "jpg"}`;
@@ -448,14 +463,43 @@ export default function CameraTab() {
       <FadeInView style={[styles.container, { paddingTop: topInset }]}>
         {/* ── Camera Preview (4:3 portrait ratio) ─────────────────── */}
         <View style={styles.previewWrapper}>
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            facing={facing}
-            flash={flash}
-          />
 
-          {/* Top overlay bar — flash, count, auth */}
+          {/* compositeRef wraps only the image content — no UI controls */}
+          <View ref={compositeRef} style={StyleSheet.absoluteFill} collapsable={false}>
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              flash={flash}
+            />
+            {/* Frozen frame — shown during composite capture so overlay burns onto the actual frame */}
+            {frozenUri && (
+              <Image
+                source={{ uri: frozenUri }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+            )}
+            {/* Geo overlay — inside compositeRef so it burns into the saved image */}
+            <PhotoOverlay
+              latitude={latitude}
+              longitude={longitude}
+              altitude={altitude}
+              address={address}
+              locationName={locationName}
+              plusCode={plusCode || computePlusCode(latitude, longitude)}
+              nearPlace={nearPlace}
+              note={note.trim() || undefined}
+              serialNumber={
+                photos.length > 0
+                  ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
+                  : "IMG-NEXT-001"
+              }
+              timestamp={Date.now()}
+            />
+          </View>
+
+          {/* Top overlay bar — flash, count, auth — NOT inside compositeRef */}
           <View style={styles.topBar}>
             {facing === "back" ? (
               <Pressable
@@ -526,23 +570,6 @@ export default function CameraTab() {
             </View>
           </View>
 
-          {/* Geo-details overlay pinned to bottom of preview */}
-          <PhotoOverlay
-            latitude={latitude}
-            longitude={longitude}
-            altitude={altitude}
-            address={address}
-            locationName={locationName}
-            plusCode={plusCode || computePlusCode(latitude, longitude)}
-            nearPlace={nearPlace}
-            note={note.trim() || undefined}
-            serialNumber={
-              photos.length > 0
-                ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
-                : "IMG-NEXT-001"
-            }
-            timestamp={Date.now()}
-          />
         </View>
 
         <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
