@@ -9,9 +9,9 @@ import {
   Platform,
   Dimensions,
   ActivityIndicator,
+  Image as RNImage,
 } from "react-native";
 import { useLocalSearchParams, router, Stack } from "expo-router";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -87,9 +87,12 @@ export default function PhotoDetailScreen() {
   const captureComposite = async (): Promise<string> => {
     if (Platform.OS === "web") return photo.uri;
     try {
+      // Small delay to ensure the view is fully rendered before capture
+      await new Promise((r) => setTimeout(r, 150));
       const uri = await captureRef(imageContainerRef, {
         format: "jpg",
         quality: 0.92,
+        result: "tmpfile",
       });
       return uri;
     } catch {
@@ -177,8 +180,8 @@ export default function PhotoDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           showsVerticalScrollIndicator={false}
         >
-          <View ref={imageContainerRef} style={styles.imageContainer}>
-            <Image source={{ uri: photo.uri }} style={styles.mainImage} contentFit="cover" transition={300} />
+          <View ref={imageContainerRef} collapsable={false} style={styles.imageContainer}>
+            <RNImage source={{ uri: photo.uri }} style={styles.mainImage} resizeMode="cover" />
             <PhotoDetailOverlay photo={photo} />
           </View>
 
