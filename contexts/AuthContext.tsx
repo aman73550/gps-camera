@@ -7,26 +7,57 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { syncUserProfile } from "@/lib/supabase";
+import { Platform } from "react-native";
 
-const AUTH_KEY = "auth_user";
+const AUTH_KEY = "auth_user_v2";
+
+function getBase(): string {
+  if (Platform.OS === "web") return "";
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain) return `https://${domain.split(":")[0]}`;
+  return "http://localhost:5000";
+}
 
 export interface AuthUser {
   name: string;
   phone: string;
+  tier: "standard" | "pro";
 }
 
 interface AuthContextValue {
   isLoggedIn: boolean;
   user: AuthUser | null;
+  tier: "guest" | "standard" | "pro";
   loginModalVisible: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
   login: (phone: string) => Promise<void>;
   logout: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+async function apiLogin(phone: string): Promise<{ phone: string; tier: "standard" | "pro" }> {
+  const res = await fetch(`${getBase()}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || `Login failed (${res.status})`);
+  }
+  return res.json();
+}
+
+async function apiGetProfile(phone: string): Promise<{ tier: "standard" | "pro" }> {
+  const res = await fetch(`${getBase()}/api/auth/profile`, {
+    headers: { "x-user-phone": phone },
+  });
+  if (!res.ok) throw new Error("Profile fetch failed");
+  return res.json();
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -34,31 +65,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(AUTH_KEY).then((v) => {
-      if (v) {
-        try {
-          setUser(JSON.parse(v));
-        } catch {}
-      }
+      if (!v) return;
+      try {
+        const parsed: AuthUser = JSON.parse(v);
+        setUser(parsed);
+        // Refresh tier from server in background
+        apiGetProfile(parsed.phone)
+          .then(({ tier }) => {
+            if (tier !== parsed.tier) {
+              const updated = { ...parsed, tier };
+              setUser(updated);
+              AsyncStorage.setItem(AUTH_KEY, JSON.stringify(updated)).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      } catch {}
     });
   }, []);
 
   const login = useCallback(async (phone: string) => {
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) {
-      throw new Error("Please enter a valid mobile number (at least 10 digits).");
+    if (digits.length < 7) {
+      throw new Error("Please enter a valid mobile number.");
     }
-    if (digits.length > 15) {
-      throw new Error("Mobile number is too long.");
-    }
+
+    const result = await apiLogin(phone);
+
     const last4 = digits.slice(-4);
     const u: AuthUser = {
       name: `User ${last4}`,
-      phone: phone.trim(),
+      phone: result.phone,
+      tier: result.tier ?? "standard",
     };
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
     setUser(u);
     setLoginModalVisible(false);
-    syncUserProfile(phone.trim()).catch(() => {});
   }, []);
 
   const logout = useCallback(async () => {
@@ -66,16 +107,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { tier } = await apiGetProfile(user.phone);
+      if (tier !== user.tier) {
+        const updated = { ...user, tier };
+        setUser(updated);
+        await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(updated));
+      }
+    } catch {}
+  }, [user]);
+
+  const tier: "guest" | "standard" | "pro" = user ? (user.tier ?? "standard") : "guest";
+
   return (
     <AuthContext.Provider
       value={{
         isLoggedIn: !!user,
         user,
+        tier,
         loginModalVisible,
         openLoginModal: () => setLoginModalVisible(true),
         closeLoginModal: () => setLoginModalVisible(false),
         login,
         logout,
+        refreshProfile,
       }}
     >
       {children}

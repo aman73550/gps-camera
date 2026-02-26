@@ -90,6 +90,68 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+
+  // ── Auth: login / register by phone ─────────────────────────
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { phone } = req.body as { phone?: string };
+      if (!phone || typeof phone !== "string") {
+        return res.status(400).json({ error: "Phone number is required" });
+      }
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length < 7 || digits.length > 15) {
+        return res.status(400).json({ error: "Invalid phone number format" });
+      }
+
+      let tier: "standard" | "pro" = "standard";
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .upsert({ phone: phone.trim() }, { onConflict: "phone", ignoreDuplicates: true })
+          .select("tier")
+          .single();
+        if (!error && data?.tier) {
+          tier = data.tier as "standard" | "pro";
+        } else if (error && error.code !== "23505") {
+          // Try a plain select if upsert fails
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("tier")
+            .eq("phone", phone.trim())
+            .single();
+          if (existing?.tier) tier = existing.tier as "standard" | "pro";
+        }
+      }
+
+      return res.json({ success: true, phone: phone.trim(), tier });
+    } catch (err) {
+      console.error("Auth login error:", err);
+      return res.status(500).json({ error: "Server error during login" });
+    }
+  });
+
+  // ── Auth: get current user profile ──────────────────────────
+  app.get("/api/auth/profile", async (req: Request, res: Response) => {
+    try {
+      const phone = req.headers["x-user-phone"] as string | undefined;
+      if (!phone) return res.status(400).json({ error: "Phone required" });
+
+      let tier: "standard" | "pro" = "standard";
+      if (supabase) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("phone", phone)
+          .single();
+        if (data?.tier) tier = data.tier as "standard" | "pro";
+      }
+
+      return res.json({ success: true, phone, tier });
+    } catch {
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
+
   app.post(
     "/api/upload",
     tierCheckMiddleware,
