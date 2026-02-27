@@ -19,7 +19,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LoginModal } from "@/components/LoginModal";
 
 const APP_VERSION = "1.0.0";
-const PRIVACY_POLICY_URL = "https://gpscamera.app/privacy";
 
 const TERMS_SECTIONS = [
   {
@@ -53,6 +52,37 @@ const TERMS_SECTIONS = [
   {
     title: "7. Changes to Terms",
     body: "The Admin may update these terms at any time. Continued use of the App after changes constitutes acceptance of the new terms.",
+  },
+];
+
+const PRIVACY_SECTIONS = [
+  {
+    title: "Privacy Policy — Verified GPS Camera",
+    body: "Last Updated: February 27, 2026\n\nAt Verified GPS Camera, operated by Aman Gupta, we prioritize user privacy and data transparency. This policy explains our data practices for the Verified GPS Camera application.",
+  },
+  {
+    title: "1. Information We Collect",
+    body: "Location Data: We access real-time GPS coordinates (Latitude, Longitude) only when the camera is active to overlay verification data onto your photos.\n\nCamera Access: Required to capture photos within the App.",
+  },
+  {
+    title: "2. Data Access & Storage",
+    body: "No Access to Local Storage: We do not have access to your device's private gallery or any photos stored locally in the App's internal directory.\n\nUploaded Images Only: Our servers and the Admin can only access, process, and store images that you explicitly choose to upload via the Upload action.\n\nPrivate Offline Files: Any photo that remains in the Files tab without being uploaded is strictly private to your device and is never transmitted to our backend.",
+  },
+  {
+    title: "3. Identity & Account Data",
+    body: "We collect your email or phone number via Google Sign-In or OTP to manage your account tier and enforce upload limits (Guest, Standard, or Pro).",
+  },
+  {
+    title: "4. Data Retention (Nightly Cleanup)",
+    body: "Auto-Delete: To maintain server integrity, a nightly cleanup occurs at 2:00 AM. Uploaded photos are permanently deleted based on the set retention period (3, 6, or 12 months).\n\nSync Status: Uploaded photos show a green cloud badge; local-only photos show a grey cloud, indicating they are not on our servers.",
+  },
+  {
+    title: "5. Security & Anti-Hack",
+    body: "We use UUID generation and verification checks to ensure only authentic photos are processed. Unauthorized or spoofed files are blocked during the upload attempt.",
+  },
+  {
+    title: "6. Contact & Support",
+    body: "For data deletion requests or privacy concerns, contact:\n\nAman Gupta\nEmail: owsmboy7383@gmail.com",
   },
 ];
 
@@ -99,6 +129,7 @@ export default function SettingsTab() {
   const { isLoggedIn, user, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const openUrl = async (url: string, label: string) => {
     const supported = await Linking.canOpenURL(url);
@@ -184,7 +215,7 @@ export default function SettingsTab() {
           <SettingsRow
             icon="shield-checkmark-outline"
             label="Privacy Policy"
-            onPress={() => openUrl(PRIVACY_POLICY_URL, "Privacy Policy")}
+            onPress={() => setShowPrivacy(true)}
           />
           <View style={styles.divider} />
           <SettingsRow
@@ -218,6 +249,26 @@ export default function SettingsTab() {
           </View>
           <ScrollView contentContainerStyle={[styles.termsScroll, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
             {TERMS_SECTIONS.map((section, i) => (
+              <View key={i} style={styles.termsSection}>
+                <Text style={[styles.termsSectionTitle, i === 0 && styles.termsSectionTitleMain]}>{section.title}</Text>
+                <Text style={styles.termsSectionBody}>{section.body}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Privacy Policy Modal */}
+      <Modal visible={showPrivacy} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPrivacy(false)}>
+        <View style={[styles.termsContainer, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
+          <View style={styles.termsHeader}>
+            <Text style={styles.termsHeaderTitle}>Privacy Policy</Text>
+            <Pressable style={({ pressed }) => [styles.termsCloseBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => setShowPrivacy(false)}>
+              <Ionicons name="close" size={22} color={Colors.light.onSurface} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={[styles.termsScroll, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
+            {PRIVACY_SECTIONS.map((section, i) => (
               <View key={i} style={styles.termsSection}>
                 <Text style={[styles.termsSectionTitle, i === 0 && styles.termsSectionTitleMain]}>{section.title}</Text>
                 <Text style={styles.termsSectionBody}>{section.body}</Text>
