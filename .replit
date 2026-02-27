@@ -3,6 +3,7 @@ modules = ["nodejs-22", "node", "javascript"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["nano"]
 
 [deployment]
 deploymentTarget = "cloudrun"
