@@ -40,12 +40,10 @@ export async function ensurePhotosDirectory(): Promise<void> {
 }
 
 export async function generateSerialNumber(): Promise<string> {
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  const timeStr = `${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+  const tsBase36 = Math.floor(Date.now() / 1000).toString(36).toUpperCase().slice(-6).padStart(6, "0");
   const uuid = Crypto.randomUUID();
-  const randomSuffix = uuid.replace(/-/g, "").slice(0, 6).toUpperCase();
-  return `IMG-${dateStr}-${timeStr}-${randomSuffix}`;
+  const randomPart = uuid.replace(/-/g, "").slice(0, 4).toUpperCase();
+  return `${tsBase36}${randomPart}`;
 }
 
 export function computePlusCode(lat: number, lon: number): string {
