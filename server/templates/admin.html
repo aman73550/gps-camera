@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Verified GPS Camera — Admin Panel</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -254,6 +255,47 @@
   .img-grid-loading { display: flex; align-items: center; justify-content: center;
     padding: 60px; background: var(--surface); border-radius: 14px; }
 
+  /* ── Search / sort toolbar ───────────────────────── */
+  .search-toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  .search-input { flex: 1; min-width: 140px; padding: 9px 13px; border: 1.5px solid var(--outline);
+    border-radius: 10px; font-size: 13px; outline: none; background: var(--surface);
+    transition: border .15s; font-family: inherit; }
+  .search-input:focus { border-color: var(--primary); }
+  .search-input::placeholder { color: #aaa; }
+  .sort-select { padding: 9px 13px; border: 1.5px solid var(--outline); border-radius: 10px;
+    font-size: 13px; outline: none; background: var(--surface); cursor: pointer; font-family: inherit;
+    transition: border .15s; color: var(--on-surface); }
+  .sort-select:focus { border-color: var(--primary); }
+  .qr-scan-btn { padding: 9px 14px; background: var(--primary); color: #fff; border: none;
+    border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    display: flex; align-items: center; gap: 5px; transition: opacity .15s; }
+  .qr-scan-btn:hover { opacity: .88; }
+  .clear-search-btn { padding: 9px 12px; border: 1.5px solid var(--outline); border-radius: 10px;
+    background: none; font-size: 12px; color: #888; cursor: pointer; white-space: nowrap;
+    transition: all .15s; }
+  .clear-search-btn:hover { border-color: var(--error); color: var(--error); }
+
+  /* ── QR scanner modal ────────────────────────────── */
+  .qr-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.82);
+    display: flex; align-items: center; justify-content: center; z-index: 4000; padding: 16px; }
+  .qr-modal-box { background: #111; border-radius: 20px; width: 100%; max-width: 420px;
+    overflow: hidden; box-shadow: 0 16px 50px rgba(0,0,0,.5); }
+  .qr-modal-header { display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px; background: #1a1a1a; }
+  .qr-modal-title { color: #fff; font-size: 16px; font-weight: 700; }
+  .qr-close-btn { background: none; border: none; color: #aaa; font-size: 22px;
+    cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 6px; }
+  .qr-close-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .qr-video-wrap { position: relative; width: 100%; aspect-ratio: 1; background: #000;
+    display: flex; align-items: center; justify-content: center; }
+  #qr-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .qr-frame { position: absolute; width: 60%; aspect-ratio: 1; border: 3px solid var(--primary-light);
+    border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); pointer-events: none; }
+  .qr-hint { color: #bbb; font-size: 13px; text-align: center; padding: 14px 16px; }
+  .qr-status { color: #64B5F6; font-size: 13px; font-weight: 600; text-align: center;
+    padding: 0 16px 14px; min-height: 20px; }
+  #qr-canvas { display: none; }
+
   /* ── Moderation modal ───────────────────────────── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5);
     display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 16px; }
@@ -455,6 +497,24 @@
         </div>
       </div>
 
+      <!-- Search toolbar -->
+      <div class="search-toolbar">
+        <input class="search-input" id="search-serial" type="text" placeholder="🔍 Search serial code…"
+          oninput="onSearchInput()" style="font-family:monospace" maxlength="40" />
+        <input class="search-input" id="search-geo" type="text" placeholder="📍 Search location / area / Plus Code…"
+          oninput="onSearchInput()" maxlength="100" />
+        <select class="sort-select" id="sort-select" onchange="onSortChange()">
+          <option value="date_desc">Newest first</option>
+          <option value="date_asc">Oldest first</option>
+          <option value="area_asc">Area A→Z</option>
+          <option value="area_desc">Area Z→A</option>
+        </select>
+        <button class="qr-scan-btn" onclick="openQrScanner()" title="Scan QR code to look up a photo">
+          &#x25A3; Scan QR
+        </button>
+        <button class="clear-search-btn" onclick="clearSearch()" title="Clear all search fields">✕ Clear</button>
+      </div>
+
       <!-- Filters -->
       <div class="mod-filters">
         <button class="filter-btn active" id="filter-all" onclick="setUploadsFilter('all')">All Uploads</button>
@@ -493,6 +553,23 @@
     <!-- Lightbox -->
     <div class="lightbox-overlay" id="lightbox" style="display:none" onclick="closeLightbox()">
       <img class="lightbox-img" id="lightbox-img" src="" alt="Upload" />
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div class="qr-modal-overlay" id="qr-modal" style="display:none">
+      <div class="qr-modal-box">
+        <div class="qr-modal-header">
+          <span class="qr-modal-title">&#x25A3; Scan QR Code</span>
+          <button class="qr-close-btn" onclick="closeQrScanner()">&#x2715;</button>
+        </div>
+        <div class="qr-video-wrap">
+          <video id="qr-video" autoplay playsinline muted></video>
+          <div class="qr-frame"></div>
+        </div>
+        <canvas id="qr-canvas"></canvas>
+        <p class="qr-hint">Point the camera at a photo's QR code</p>
+        <div class="qr-status" id="qr-status"></div>
+      </div>
     </div>
 
     <!-- DELETIONS -->
@@ -722,6 +799,10 @@ let adminPassword = localStorage.getItem('admin_password') || '';
 let uploadsPage = 1;
 let uploadsTotalPages = 1;
 let uploadsFilter = 'all';
+let uploadsSearch = '';
+let uploadsGeo = '';
+let uploadsSort = 'date_desc';
+let _searchTimer = null;
 let modAction = null;
 let deletionsPage = 1;
 let deletionsTotalPages = 1;
@@ -893,6 +974,90 @@ function setUploadsFilter(f) {
   loadUploads();
 }
 
+function onSearchInput() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    uploadsSearch = (document.getElementById('search-serial').value || '').trim();
+    uploadsGeo = (document.getElementById('search-geo').value || '').trim();
+    uploadsPage = 1;
+    loadUploads();
+  }, 380);
+}
+
+function onSortChange() {
+  uploadsSort = document.getElementById('sort-select').value;
+  uploadsPage = 1;
+  loadUploads();
+}
+
+function clearSearch() {
+  document.getElementById('search-serial').value = '';
+  document.getElementById('search-geo').value = '';
+  document.getElementById('sort-select').value = 'date_desc';
+  uploadsSearch = '';
+  uploadsGeo = '';
+  uploadsSort = 'date_desc';
+  uploadsPage = 1;
+  loadUploads();
+}
+
+/* ── QR Scanner ───────────────────────────────────── */
+let _qrStream = null;
+let _qrRaf = null;
+let _qrFound = false;
+
+async function openQrScanner() {
+  _qrFound = false;
+  document.getElementById('qr-status').textContent = 'Starting camera…';
+  document.getElementById('qr-modal').style.display = 'flex';
+  try {
+    _qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('qr-video');
+    video.srcObject = _qrStream;
+    video.play();
+    video.onloadedmetadata = () => {
+      document.getElementById('qr-status').textContent = 'Scanning…';
+      _scanQrFrame();
+    };
+  } catch (e) {
+    document.getElementById('qr-status').textContent = 'Camera access denied. ' + (e.message || '');
+  }
+}
+
+function _scanQrFrame() {
+  if (_qrFound) return;
+  const video = document.getElementById('qr-video');
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) { _qrRaf = requestAnimationFrame(_scanQrFrame); return; }
+  const canvas = document.getElementById('qr-canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+  if (code && code.data) {
+    _qrFound = true;
+    const serial = code.data.trim();
+    document.getElementById('qr-status').textContent = '✓ Found: ' + serial;
+    closeQrScanner();
+    document.getElementById('search-serial').value = serial;
+    uploadsSearch = serial;
+    uploadsGeo = '';
+    uploadsPage = 1;
+    loadUploads();
+  } else {
+    _qrRaf = requestAnimationFrame(_scanQrFrame);
+  }
+}
+
+function closeQrScanner() {
+  cancelAnimationFrame(_qrRaf);
+  if (_qrStream) { _qrStream.getTracks().forEach(t => t.stop()); _qrStream = null; }
+  document.getElementById('qr-modal').style.display = 'none';
+  const video = document.getElementById('qr-video');
+  video.srcObject = null;
+}
+
 let _uploadsLoading = false;
 async function loadUploads() {
   if (_uploadsLoading) return;
@@ -903,7 +1068,15 @@ async function loadUploads() {
 
   let r;
   try {
-    r = await api(`/api/admin/uploads?page=${uploadsPage}&limit=18&filter=${uploadsFilter}`);
+    const params = new URLSearchParams({
+      page: uploadsPage,
+      limit: 18,
+      filter: uploadsFilter,
+      sort: uploadsSort,
+    });
+    if (uploadsSearch) params.set('search', uploadsSearch);
+    if (uploadsGeo) params.set('geo', uploadsGeo);
+    r = await api(`/api/admin/uploads?${params.toString()}`);
   } catch {
     document.getElementById('uploads-grid').innerHTML = '<div class="img-grid-empty">Network error. Retry by switching filter.</div>';
     _uploadsLoading = false;

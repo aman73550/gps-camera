@@ -485,13 +485,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = (page - 1) * limit;
 
       const filter = (req.query.filter as string) || "all";
+      const search = ((req.query.search as string) || "").trim();
+      const geo = ((req.query.geo as string) || "").trim();
+      const sort = (req.query.sort as string) || "date_desc";
+
       let query = supabase
         .from("uploads")
         .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
+
+      if (sort === "date_asc") query = query.order("created_at", { ascending: true });
+      else if (sort === "area_asc") query = query.order("location_name", { ascending: true }).order("created_at", { ascending: false });
+      else if (sort === "area_desc") query = query.order("location_name", { ascending: false }).order("created_at", { ascending: false });
+      else query = query.order("created_at", { ascending: false });
+
       if (filter === "flagged") query = query.eq("flagged", true);
       if (filter === "clean") query = query.eq("flagged", false);
+      if (search) query = query.ilike("serial_number", `%${search}%`);
+      if (geo) query = query.or(`address.ilike.%${geo}%,location_name.ilike.%${geo}%,plus_code.ilike.%${geo}%`);
 
       const { data: uploads, count } = await query;
 
