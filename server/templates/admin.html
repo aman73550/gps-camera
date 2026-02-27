@@ -182,8 +182,11 @@
   .loader { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--outline);
     border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
   .loading-row td { text-align: center; color: #888; padding: 28px; }
   .empty-row td { text-align: center; color: #AAA; padding: 28px; font-size: 13px; }
+  .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
+    background-size: 600px 100%; animation: shimmer 1.4s infinite; }
 
   /* ── Dashboard header row ───────────────────────── */
   .dash-header { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
@@ -209,10 +212,14 @@
     box-shadow: 0 1px 6px rgba(0,0,0,.08); border: 2px solid transparent; transition: border-color .15s; }
   .img-card.flagged { border-color: var(--error); }
   .img-card.user-banned { border-color: #7B1FA2; }
-  .img-thumb { width: 100%; height: 160px; background: #F0F4F8; position: relative;
+  .img-thumb { width: 100%; height: 160px; position: relative;
     display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
-  .img-thumb img { width: 100%; height: 100%; object-fit: cover; transition: opacity .2s; }
-  .img-thumb .no-img { font-size: 40px; color: #CCC; }
+  .img-thumb.loading { background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
+    background-size: 600px 100%; animation: shimmer 1.4s infinite; }
+  .img-thumb img { position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 0; transition: opacity .25s ease; }
+  .img-thumb img.loaded { opacity: 1; }
+  .img-thumb .no-img { font-size: 40px; color: #CCC; position: relative; z-index: 1; }
   .img-flag-badge { position: absolute; top: 7px; right: 7px; background: var(--error);
     color: #fff; border-radius: 20px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
   .img-banned-badge { position: absolute; top: 7px; left: 7px; background: #7B1FA2;
@@ -287,11 +294,17 @@
     .supabase-badge { font-size: 11px; }
     .chart-card { padding: 14px; }
     .chart-wrap { height: 160px; }
+    .img-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .img-thumb { height: 130px; }
+    .mod-stats-bar { gap: 8px; }
+    .mod-stat { padding: 10px 12px; min-width: 80px; }
+    .mod-stat-val { font-size: 20px; }
   }
 
   @media (max-width: 400px) {
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .stat-value { font-size: 22px; }
+    .img-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -846,11 +859,30 @@ async function loadUsers() {
 
 async function changeTier(phone, newTier, btn) {
   btn.disabled = true; btn.textContent = '…';
-  const r = await api('/api/admin/users/tier', {
+  const r = await api(`/api/admin/users/${encodeURIComponent(phone)}/tier`, {
     method: 'POST',
-    body: JSON.stringify({ phone, tier: newTier })
+    body: JSON.stringify({ tier: newTier })
   });
   if (r.ok) loadUsers(); else { btn.disabled = false; btn.textContent = 'Error'; }
+}
+
+function imgUrl(filename) {
+  const u = encodeURIComponent(adminUsername);
+  const p = encodeURIComponent(adminPassword);
+  return `/api/admin/image/${encodeURIComponent(filename)}?u=${u}&p=${p}`;
+}
+
+function skeletonGrid(n) {
+  const cards = Array.from({length: n}, () => `
+    <div class="img-card">
+      <div class="img-thumb loading" style="cursor:default"></div>
+      <div class="img-card-body">
+        <div class="skeleton" style="height:10px;border-radius:6px;width:80%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:10px;border-radius:6px;width:55%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:10px;border-radius:6px;width:65%"></div>
+      </div>
+    </div>`).join('');
+  return `<div class="img-grid">${cards}</div>`;
 }
 
 function setUploadsFilter(f) {
@@ -861,28 +893,51 @@ function setUploadsFilter(f) {
   loadUploads();
 }
 
+let _uploadsLoading = false;
 async function loadUploads() {
-  document.getElementById('uploads-grid').innerHTML =
-    '<div class="img-grid-loading"><span class="loader"></span></div>';
-  const r = await api(`/api/admin/uploads?page=${uploadsPage}&limit=18&filter=${uploadsFilter}`);
-  if (!r.ok) { document.getElementById('uploads-grid').innerHTML = '<div class="img-grid-empty">Failed to load uploads.</div>'; return; }
+  if (_uploadsLoading) return;
+  _uploadsLoading = true;
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('btn-next').disabled = true;
+  document.getElementById('uploads-grid').innerHTML = skeletonGrid(9);
+
+  let r;
+  try {
+    r = await api(`/api/admin/uploads?page=${uploadsPage}&limit=18&filter=${uploadsFilter}`);
+  } catch {
+    document.getElementById('uploads-grid').innerHTML = '<div class="img-grid-empty">Network error. Retry by switching filter.</div>';
+    _uploadsLoading = false;
+    return;
+  }
+
+  if (!r.ok) {
+    document.getElementById('uploads-grid').innerHTML = '<div class="img-grid-empty">Failed to load uploads.</div>';
+    _uploadsLoading = false;
+    return;
+  }
+
   const { data, total, page, limit, flaggedCount, bannedCount } = await r.json();
   uploadsTotalPages = Math.ceil(total / limit) || 1;
   const start = (page - 1) * limit + 1;
   const end = Math.min(page * limit, total);
+
   document.getElementById('uploads-info').textContent = total ? `${start}–${end} of ${total}` : '0 uploads';
   document.getElementById('btn-prev').disabled = page <= 1;
   document.getElementById('btn-next').disabled = page >= uploadsTotalPages;
+
   const tEl = document.getElementById('mod-total');
   const fEl = document.getElementById('mod-flagged');
   const bEl = document.getElementById('mod-banned');
   if (tEl) tEl.textContent = total.toLocaleString();
   if (fEl) fEl.textContent = (flaggedCount ?? 0).toLocaleString();
   if (bEl) bEl.textContent = (bannedCount ?? 0).toLocaleString();
+
   if (!data.length) {
     document.getElementById('uploads-grid').innerHTML = '<div class="img-grid-empty">No uploads in this category.</div>';
+    _uploadsLoading = false;
     return;
   }
+
   const cards = data.map(u => {
     const isBanned = u.user_profile?.banned;
     const isWarned = u.user_profile?.warned;
@@ -890,26 +945,32 @@ async function loadUploads() {
     const phone = u.user_phone || '';
     const serial = u.serial_number || '';
     const fn = u.file_path ? u.file_path.split('/').pop() : null;
-    const imgSrc = fn ? `/api/admin/image/${encodeURIComponent(fn)}` : null;
+    const hasImg = !!fn;
+    const iUrl = fn ? imgUrl(fn) : null;
+    const lbUrl = iUrl || '';
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-    const safePh = phone.replace(/'/g, "\\'");
-    const safeSer = serial.replace(/'/g, "\\'");
+    const safePh = phone.replace(/'/g, "&#39;");
+    const safeSer = serial.replace(/'/g, "&#39;");
+    const safeSerial = encodeURIComponent(serial);
+    const safePhone = encodeURIComponent(phone);
     return `
     <div class="img-card${u.flagged ? ' flagged' : ''}${isBanned ? ' user-banned' : ''}" id="card-${serial}">
-      <div class="img-thumb" onclick="openLightbox('${imgSrc || ''}')">
-        ${imgSrc
-          ? `<img src="${imgSrc}" alt="${serial}" onerror="this.parentElement.innerHTML='<span class=\\'no-img\\'>📷</span>'">`
+      <div class="img-thumb loading" onclick="openLightbox('${lbUrl}')">
+        ${hasImg
+          ? `<img src="${iUrl}" alt="${serial}" loading="lazy"
+               onload="this.classList.add('loaded');this.parentElement.classList.remove('loading')"
+               onerror="this.parentElement.classList.remove('loading');this.parentElement.innerHTML+='<span class=\\'no-img\\'>📷</span>';this.remove()">`
           : `<span class="no-img">📷</span>`
         }
         ${u.flagged ? `<span class="img-flag-badge">🚩 Flagged</span>` : ''}
         ${isBanned ? `<span class="img-banned-badge">🚫 Banned</span>` : ''}
       </div>
       <div class="img-card-body">
-        <div class="img-serial">${serial}</div>
+        <div class="img-serial" title="${serial}">${serial}</div>
         <div class="img-user">
           ${u.is_guest
             ? '<span class="badge badge-guest">Guest</span>'
-            : `<span style="font-family:monospace;font-size:11px;color:#333">${phone.length > 24 ? phone.slice(0,24)+'…' : phone}</span>`
+            : `<span style="font-family:monospace;font-size:11px;color:#333" title="${phone}">${phone.length > 22 ? phone.slice(0,22)+'…' : phone}</span>`
           }
           ${!u.is_guest ? `<span class="badge badge-${tier}">${tier === 'pro' ? '⭐ Pro' : '👤 Std'}</span>` : ''}
           ${isWarned ? `<span class="badge badge-warned">⚠️ Warned</span>` : ''}
@@ -917,25 +978,42 @@ async function loadUploads() {
         </div>
         <div class="img-meta">${dateStr} · ${u.file_size_kb || 0} KB</div>
         <div class="img-location" title="${u.address || ''}">${u.address || 'No location'}</div>
-        ${u.flagged && u.flag_reason ? `<div style="font-size:11px;color:var(--error);margin-bottom:6px">Reason: ${u.flag_reason}</div>` : ''}
+        ${u.flagged && u.flag_reason ? `<div style="font-size:11px;color:var(--error);margin-bottom:4px">⚑ ${u.flag_reason}</div>` : ''}
       </div>
       <div class="img-actions">
         ${u.flagged
-          ? `<button class="mod-btn mod-btn-unflag" onclick="quickUnflag('${safeSer}',this)">✓ Unflag</button>`
-          : `<button class="mod-btn mod-btn-flag" onclick="openModal('flag','${safeSer}','${safePh}')">🚩 Flag</button>`
+          ? `<button class="mod-btn mod-btn-unflag" onclick="quickUnflag('${safeSerial}',this)">✓ Unflag</button>`
+          : `<button class="mod-btn mod-btn-flag" onclick="openModalEnc('flag','${safeSerial}','${safePhone}')">🚩 Flag</button>`
         }
-        <button class="mod-btn mod-btn-delete" onclick="hardDelete('${safeSer}',this)">🗑️ Delete</button>
+        <button class="mod-btn mod-btn-delete" onclick="hardDelete('${safeSerial}',this)">🗑️ Delete</button>
         ${!u.is_guest ? `
-          <button class="mod-btn mod-btn-warn" onclick="openModal('warn','${safeSer}','${safePh}')">⚠️ Warn</button>
+          <button class="mod-btn mod-btn-warn" onclick="openModalEnc('warn','${safeSerial}','${safePhone}')">⚠️ Warn</button>
           ${isBanned
-            ? `<button class="mod-btn mod-btn-unban" onclick="doUnban('${safePh}',this)">✓ Unban</button>`
-            : `<button class="mod-btn mod-btn-ban" onclick="openModal('ban','${safeSer}','${safePh}')">🚫 Ban</button>`
+            ? `<button class="mod-btn mod-btn-unban" onclick="doUnbanEnc('${safePhone}',this)">✓ Unban</button>`
+            : `<button class="mod-btn mod-btn-ban" onclick="openModalEnc('ban','${safeSerial}','${safePhone}')">🚫 Ban</button>`
           }
         ` : ''}
       </div>
     </div>`;
   }).join('');
+
   document.getElementById('uploads-grid').innerHTML = `<div class="img-grid">${cards}</div>`;
+  _uploadsLoading = false;
+}
+
+function openModalEnc(type, serialEnc, phoneEnc) {
+  openModal(type, decodeURIComponent(serialEnc), decodeURIComponent(phoneEnc));
+}
+
+function doUnbanEnc(phoneEnc, btn) {
+  doUnban(decodeURIComponent(phoneEnc), btn);
+}
+
+let _pagTimer = null;
+function changePage(dir) {
+  uploadsPage = Math.max(1, Math.min(uploadsTotalPages, uploadsPage + dir));
+  clearTimeout(_pagTimer);
+  _pagTimer = setTimeout(loadUploads, 80);
 }
 
 function changePage(dir) {
@@ -1011,18 +1089,19 @@ async function submitModAction() {
   } catch { btn.disabled = false; btn.textContent = 'Error — retry'; }
 }
 
-async function quickUnflag(serial, btn) {
+async function quickUnflag(serialEnc, btn) {
   btn.disabled = true; btn.textContent = '…';
-  const r = await api(`/api/admin/uploads/${encodeURIComponent(serial)}/flag`, {
+  const r = await api(`/api/admin/uploads/${serialEnc}/flag`, {
     method: 'POST', body: JSON.stringify({ flagged: false })
   });
   if (r.ok) loadUploads(); else { btn.disabled = false; btn.textContent = 'Error'; }
 }
 
-async function hardDelete(serial, btn) {
+async function hardDelete(serialEnc, btn) {
+  const serial = decodeURIComponent(serialEnc);
   if (!confirm(`Permanently delete upload "${serial}"?\nThis also removes the file from the server. This cannot be undone.`)) return;
   btn.disabled = true; btn.textContent = '…';
-  const r = await api(`/api/admin/uploads/${encodeURIComponent(serial)}`, { method: 'DELETE' });
+  const r = await api(`/api/admin/uploads/${serialEnc}`, { method: 'DELETE' });
   if (r.ok) loadUploads(); else { btn.disabled = false; btn.textContent = 'Error'; }
 }
 
@@ -1047,11 +1126,7 @@ async function loadDeletions() {
   document.getElementById('deletions-info').textContent = total ? `${start}–${end} of ${total}` : '0 requests';
   document.getElementById('del-btn-prev').disabled = page <= 1;
   document.getElementById('del-btn-next').disabled = page >= deletionsTotalPages;
-  const badge = total > 0 ? String(total) : '';
-  const delBadge = document.getElementById('del-badge');
-  const mobDelBadge = document.getElementById('mob-del-badge');
-  if (delBadge) { delBadge.textContent = badge; delBadge.style.display = badge ? '' : 'none'; }
-  if (mobDelBadge) { mobDelBadge.textContent = badge; mobDelBadge.style.display = badge ? '' : 'none'; }
+  updateDelBadge(total);
   if (!data.length) {
     document.getElementById('deletions-tbody').innerHTML =
       '<tr class="empty-row"><td colspan="4">No pending deletion requests</td></tr>';
@@ -1223,21 +1298,22 @@ async function runCleanup() {
   if (deleted > 0) loadDashboard();
 }
 
+function updateDelBadge(total) {
+  const badge = total > 0 ? String(total) : '';
+  const delBadge = document.getElementById('del-badge');
+  const mobDelBadge = document.getElementById('mob-del-badge');
+  if (delBadge) { delBadge.textContent = badge; delBadge.style.display = badge ? '' : 'none'; }
+  if (mobDelBadge) { mobDelBadge.textContent = badge; mobDelBadge.style.display = badge ? '' : 'none'; }
+}
+
 async function initApp() {
-  loadDashboard();
-  // Pre-load deletions count so the badge shows on the nav immediately
-  (async () => {
-    try {
-      const r = await api('/api/admin/pending-deletions?page=1&limit=1');
-      if (!r.ok) return;
-      const { total } = await r.json();
-      const badge = total > 0 ? String(total) : '';
-      const delBadge = document.getElementById('del-badge');
-      const mobDelBadge = document.getElementById('mob-del-badge');
-      if (delBadge) { delBadge.textContent = badge; delBadge.style.display = badge ? '' : 'none'; }
-      if (mobDelBadge) { mobDelBadge.textContent = badge; mobDelBadge.style.display = badge ? '' : 'none'; }
-    } catch {}
-  })();
+  Promise.all([
+    loadDashboard(),
+    api('/api/admin/pending-deletions?page=1&limit=1')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) updateDelBadge(d.total || 0); })
+      .catch(() => {})
+  ]);
 }
 
 // Init

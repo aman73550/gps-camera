@@ -97,8 +97,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
 function adminAuth(req: Request, res: Response, next: NextFunction) {
   if (!ADMIN_USERNAME || !ADMIN_PASSWORD) return next();
-  const username = req.headers["x-admin-username"] as string | undefined;
-  const password = req.headers["x-admin-password"] as string | undefined;
+  const username = (req.headers["x-admin-username"] as string | undefined) || (req.query["u"] as string | undefined);
+  const password = (req.headers["x-admin-password"] as string | undefined) || (req.query["p"] as string | undefined);
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Unauthorized" });
   }
