@@ -21,7 +21,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import Animated, {
   useSharedValue,
   withTiming,
@@ -108,6 +108,15 @@ export default function FilesTab() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsub = navigation.addListener("tabPress" as any, () => {
+      if (isScanning) setIsScanning(false);
+    });
+    return unsub;
+  }, [isScanning, navigation]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
