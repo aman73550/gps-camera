@@ -1,0 +1,15 @@
+node_modules
+.expo
+static-build
+server/uploads
+scripts
+app
+components
+constants
+lib
+hooks
+assets
+references
+supabase
+*.md
+expo-env.d.ts

@@ -31,7 +31,9 @@ import {
   UploadRecord,
 } from "./supabase";
 
-const uploadsDir = path.resolve(process.cwd(), "server", "uploads");
+const uploadsDir = process.env.VERCEL
+  ? path.join("/tmp", "uploads")
+  : path.resolve(process.cwd(), "server", "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
