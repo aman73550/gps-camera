@@ -35,12 +35,9 @@ const ACCEPTED_MIME = new Set(["image/jpeg", "image/jpg", "image/webp"]);
 
 const multerStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const serial = (req as Request & { body: { serialNumber?: string } }).body
-      ?.serialNumber;
-    const ext = file.mimetype === "image/webp" ? "webp" : "jpg";
-    const name = serial ? `${serial}.${ext}` : `${Date.now()}-${file.originalname}`;
-    cb(null, name);
+  filename: (_req, file, cb) => {
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+    cb(null, safeName);
   },
 });
 

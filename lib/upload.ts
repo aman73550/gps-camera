@@ -40,8 +40,7 @@ export function getServerBase(): string {
   if (Platform.OS === "web") return "";
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) {
-    const host = domain.split(":")[0];
-    return `https://${host}`;
+    return `https://${domain}`;
   }
   return "http://localhost:5000";
 }

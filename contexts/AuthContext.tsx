@@ -17,7 +17,7 @@ const AUTH_KEY = "auth_user_v2";
 function getBase(): string {
   if (Platform.OS === "web") return "";
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  if (domain) return `https://${domain.split(":")[0]}`;
+  if (domain) return `https://${domain}`;
   return "http://localhost:5000";
 }
 
