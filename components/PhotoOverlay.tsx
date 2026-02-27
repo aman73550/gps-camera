@@ -36,7 +36,6 @@ export function PhotoOverlay({
   const m = String(date.getMinutes()).padStart(2, "0");
   const s = String(date.getSeconds()).padStart(2, "0");
   const dateStr = `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}  ${h}:${m}:${s}`;
-  const altStr = altitude > 0 ? `${Math.round(altitude)} m` : "— m";
 
   return (
     <View style={styles.container}>
@@ -94,11 +93,6 @@ export function PhotoOverlay({
               <MaterialCommunityIcons name="shield-check" size={11} color="rgba(255,210,60,0.95)" />
               <Text style={styles.watermarkClickBy}>Click By </Text>
               <Text style={styles.watermarkAppName}>Verified GPS Camera</Text>
-            </View>
-            <View style={styles.metaSpacer} />
-            <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="image-filter-hdr" size={12} color="rgba(255,255,255,0.65)" />
-              <Text style={styles.metaText}>{altStr}</Text>
             </View>
           </View>
           {/* Scan hint */}
@@ -224,19 +218,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.4,
-  },
-  metaSpacer: {
-    flex: 1,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    color: "rgba(255,255,255,0.70)",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
   },
   scanHintText: {
     color: "rgba(255,255,255,0.88)",
