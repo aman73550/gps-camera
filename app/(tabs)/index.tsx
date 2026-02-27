@@ -578,9 +578,7 @@ export default function CameraTab() {
               note={note.trim() || undefined}
               serialNumber={
                 overlaySerial ??
-                (photos.length > 0
-                  ? `IMG-NEXT-${String(photos.length + 1).padStart(3, "0")}`
-                  : "IMG-NEXT-001")
+                `NEXT${String(photos.length + 1).padStart(6, "0")}`
               }
               timestamp={Date.now()}
             />
