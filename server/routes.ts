@@ -24,6 +24,10 @@ import {
   unbanUser,
   claimGuestUploads,
   checkImageHashes,
+  uploadToStorage,
+  getStoragePublicUrl,
+  getStorageThumbUrl,
+  deleteFromStorage,
   UploadRecord,
 } from "./supabase";
 
@@ -34,16 +38,8 @@ if (!fs.existsSync(uploadsDir)) {
 
 const ACCEPTED_MIME = new Set(["image/jpeg", "image/jpg", "image/webp"]);
 
-const multerStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-    cb(null, safeName);
-  },
-});
-
 const upload = multer({
-  storage: multerStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ACCEPTED_MIME.has(file.mimetype)) {
@@ -253,11 +249,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!data?.file_path) return res.status(404).send("Not found");
     if (data.flagged) return res.status(403).send("This image has been flagged and is unavailable");
     const filename = path.basename(data.file_path);
-    const filePath = path.join(uploadsDir, filename);
-    if (!fs.existsSync(filePath)) return res.status(404).send("Image file not found");
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.sendFile(filePath);
+    if (process.env.VERCEL) {
+      const storageUrl = getStoragePublicUrl(filename);
+      if (!storageUrl) return res.status(503).send("Storage not configured");
+      return res.redirect(302, storageUrl);
+    }
+    const filePath = path.join(uploadsDir, filename);
+    if (fs.existsSync(filePath)) return res.sendFile(filePath);
+    const storageUrl = getStoragePublicUrl(filename);
+    if (storageUrl) return res.redirect(302, storageUrl);
+    return res.status(404).send("Image file not found");
   });
 
   // ── Public: verification page (scanned from QR on photo) ──
@@ -389,12 +392,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedFormat = uploadSettings.image_format ?? "auto";
 
       if (req.file.size > maxFileMb * 1024 * 1024) {
-        fs.unlinkSync(req.file.path);
         return res.status(413).json({ error: "FILE_TOO_LARGE", maxMb: maxFileMb });
       }
 
       if (allowedFormat === "jpeg" && !["image/jpeg", "image/jpg"].includes(req.file.mimetype)) {
-        fs.unlinkSync(req.file.path);
         return res.status(400).json({ error: "IMAGE_FORMAT_NOT_ALLOWED", allowedFormat });
       }
 
@@ -408,6 +409,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userPhone = reqExt.userPhone ?? null;
       const isGuest = reqExt.isGuest ?? true;
 
+      const safeName = req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+
+      await uploadToStorage(req.file.buffer, safeName, req.file.mimetype);
+
+      if (!process.env.VERCEL) {
+        try {
+          if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+          fs.writeFileSync(path.join(uploadsDir, safeName), req.file.buffer);
+        } catch (e) {
+          console.warn("Local disk write skipped:", e);
+        }
+      }
+
       const skipRecord = req.headers["x-skip-record"] === "true";
 
       if (!skipRecord) {
@@ -420,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: address || "",
           location_name: locationName || "",
           plus_code: plusCode || "",
-          file_path: req.file.filename,
+          file_path: safeName,
           file_size_kb: Math.round(req.file.size / 1024),
           is_guest: isGuest,
           image_hash: imageHash || null,
@@ -439,12 +453,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         message: "Photo uploaded successfully",
         serial: serialNumber,
-        filePath: req.file.filename,
+        filePath: safeName,
       });
     },
   );
 
-  app.get("/api/uploads", (_req: Request, res: Response) => {
+  app.get("/api/uploads", async (_req: Request, res: Response) => {
+    if (supabase) {
+      const { count } = await supabase.from("uploads").select("*", { count: "exact", head: true });
+      return res.json({ count: count || 0, files: [] });
+    }
     try {
       const files = fs
         .readdirSync(uploadsDir)
@@ -761,13 +779,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     adminAuth,
     async (req: Request, res: Response) => {
       const filename = path.basename(req.params["filename"] as string);
-      const filePath = path.join(uploadsDir, filename);
-      if (!fs.existsSync(filePath)) return res.status(404).send("Not found");
-
       const isThumb = req.query["thumb"] === "1";
-      if (!isThumb) {
-        return res.sendFile(filePath);
+
+      if (process.env.VERCEL) {
+        const storageUrl = isThumb ? getStorageThumbUrl(filename) : getStoragePublicUrl(filename);
+        if (!storageUrl) return res.status(503).send("Storage not configured");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return res.redirect(302, storageUrl);
       }
+
+      const filePath = path.join(uploadsDir, filename);
+      if (!fs.existsSync(filePath)) {
+        const storageUrl = isThumb ? getStorageThumbUrl(filename) : getStoragePublicUrl(filename);
+        if (storageUrl) { res.setHeader("Cache-Control", "public, max-age=3600"); return res.redirect(302, storageUrl); }
+        return res.status(404).send("Not found");
+      }
+
+      if (!isThumb) return res.sendFile(filePath);
 
       const thumbsDir = path.join(uploadsDir, "thumbs");
       if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
@@ -811,7 +839,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const serial = req.params["serial"] as string;
       const { data } = await supabase.from("uploads").select("file_path").eq("serial_number", serial).single();
       if (data?.file_path) {
-        const fullPath = path.join(uploadsDir, path.basename(data.file_path));
+        const filename = path.basename(data.file_path);
+        await deleteFromStorage(filename);
+        const fullPath = path.join(uploadsDir, filename);
         if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
       }
       const { error } = await supabase.from("uploads").delete().eq("serial_number", serial);

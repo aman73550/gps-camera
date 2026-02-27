@@ -100,3 +100,39 @@ ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS image_max_file_mb  INTE
 INSERT INTO public.app_settings (id, delete_after_months, auto_delete_enabled, required_version, force_update, guest_limit, standard_daily_limit, standard_monthly_limit)
 VALUES (1, 0, FALSE, '1.0.0', FALSE, 20, 50, 1000)
 ON CONFLICT (id) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────
+-- SUPABASE STORAGE BUCKET (for Vercel deployment)
+-- Run this in: Supabase Dashboard → SQL Editor
+-- ─────────────────────────────────────────────────────────────
+
+-- Create the uploads storage bucket (public for reads)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'uploads',
+  'uploads',
+  true,
+  20971520,
+  ARRAY['image/jpeg', 'image/jpg', 'image/webp']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public reads from the bucket
+DROP POLICY IF EXISTS "uploads_public_read" ON storage.objects;
+CREATE POLICY "uploads_public_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'uploads');
+
+-- Allow server-side uploads (anon key or service role)
+DROP POLICY IF EXISTS "uploads_insert" ON storage.objects;
+CREATE POLICY "uploads_insert" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'uploads');
+
+-- Allow server-side updates (upsert)
+DROP POLICY IF EXISTS "uploads_update" ON storage.objects;
+CREATE POLICY "uploads_update" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'uploads');
+
+-- Allow server-side deletes
+DROP POLICY IF EXISTS "uploads_delete" ON storage.objects;
+CREATE POLICY "uploads_delete" ON storage.objects
+  FOR DELETE USING (bucket_id = 'uploads');

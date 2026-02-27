@@ -248,9 +248,11 @@ export async function confirmUploadDeletion(
     .eq("serial_number", serialNumber)
     .single();
   if (data?.file_path) {
+    const filename = require("path").basename(data.file_path);
+    await deleteFromStorage(filename);
     const fs = require("fs");
     const path = require("path");
-    const filePath = path.join(uploadsDir, data.file_path);
+    const filePath = path.join(uploadsDir, filename);
     try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
   }
   const { error } = await supabase
@@ -325,6 +327,59 @@ export async function unbanUser(phone: string): Promise<boolean> {
     .update({ banned: false, ban_reason: null, banned_at: null })
     .eq("phone", phone);
   return !error;
+}
+
+// ── Supabase Storage ─────────────────────────────────────────────────────────
+const STORAGE_BUCKET = "uploads";
+
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+const storageClient: SupabaseClient | null =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
+
+const activeStorageClient = storageClient || supabase;
+
+export async function uploadToStorage(
+  buffer: Buffer,
+  filename: string,
+  mimeType: string,
+): Promise<boolean> {
+  if (!activeStorageClient) return false;
+  const { error } = await activeStorageClient.storage
+    .from(STORAGE_BUCKET)
+    .upload(filename, buffer, { contentType: mimeType, upsert: true });
+  if (error) console.error("Storage upload error:", error.message);
+  return !error;
+}
+
+export function getStoragePublicUrl(filename: string): string | null {
+  if (!activeStorageClient || !SUPABASE_URL) return null;
+  const { data } = activeStorageClient.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(filename);
+  return data?.publicUrl || null;
+}
+
+export function getStorageThumbUrl(filename: string): string | null {
+  if (!activeStorageClient || !SUPABASE_URL) return null;
+  const { data } = activeStorageClient.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(filename, {
+      transform: { width: 280, height: 200, resize: "cover" },
+    });
+  return data?.publicUrl || null;
+}
+
+export async function deleteFromStorage(filename: string): Promise<void> {
+  if (!activeStorageClient) return;
+  const { error } = await activeStorageClient.storage
+    .from(STORAGE_BUCKET)
+    .remove([filename]);
+  if (error) console.error("Storage delete error:", error.message);
 }
 
 export async function checkSupabaseConnection(): Promise<boolean> {

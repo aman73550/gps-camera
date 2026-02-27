@@ -110,3 +110,32 @@ lib/
 
 - Frontend: `npm run expo:dev` (port 8081)
 - Backend: `npm run server:dev` (port 5000)
+
+## Vercel Deployment
+
+The backend is ready to deploy to Vercel free tier. Key files:
+
+- `vercel.json` — routes all requests to `api/index.ts` serverless function
+- `api/index.ts` — Vercel entry point (re-exports `handler` from `server/index.ts`)
+- `server/index.ts` — exports `handler` for Vercel; starts HTTP server only on non-Vercel
+- `server/supabase.ts` — storage helpers: `uploadToStorage`, `getStoragePublicUrl`, `getStorageThumbUrl`, `deleteFromStorage`
+- `supabase/setup.sql` — includes storage bucket creation + RLS policies (run in Supabase SQL Editor)
+
+### Storage layer (Supabase Storage)
+
+- Bucket name: `uploads` (public read access)
+- On Vercel: all image serving redirects to Supabase Storage URLs (no local disk)
+- On Replit dev: local disk served first, Supabase Storage as fallback
+- New uploads (after migration): buffer uploaded to Supabase Storage + local disk copy on Replit dev
+- Service role key (`SUPABASE_SERVICE_ROLE_KEY`) recommended for storage uploads; falls back to anon key
+
+### Required env vars for Vercel
+
+```
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY   # recommended
+SESSION_SECRET
+ADMIN_USERNAME
+ADMIN_PASSWORD
+```

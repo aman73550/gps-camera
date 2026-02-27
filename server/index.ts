@@ -28,14 +28,23 @@ function setupCors(app: express.Application) {
       });
     }
 
+    if (process.env.VERCEL_URL) {
+      origins.add(`https://${process.env.VERCEL_URL}`);
+    }
+
+    if (process.env.EXPO_PUBLIC_APP_URL) {
+      origins.add(process.env.EXPO_PUBLIC_APP_URL);
+    }
+
     const origin = req.header("origin");
 
-    // Allow localhost origins for Expo web development (any port)
     const isLocalhost =
       origin?.startsWith("http://localhost:") ||
       origin?.startsWith("http://127.0.0.1:");
 
-    if (origin && (origins.has(origin) || isLocalhost)) {
+    const isVercelDomain = !!origin?.match(/^https:\/\/[a-z0-9-]+\.vercel\.app$/);
+
+    if (origin && (origins.has(origin) || isLocalhost || isVercelDomain || process.env.VERCEL)) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header(
         "Access-Control-Allow-Methods",
@@ -229,40 +238,44 @@ function setupErrorHandler(app: express.Application) {
   });
 }
 
-(async () => {
+let _initPromise: Promise<void> | null = null;
+
+async function initApp(): Promise<void> {
   setupCors(app);
   setupBodyParsing(app);
   setupRequestLogging(app);
-
   configureExpoAndLanding(app);
-
   const server = await registerRoutes(app);
-
   setupErrorHandler(app);
-
   await checkSupabaseConnection();
 
-  const msUntil2am = (() => {
-    const now = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 2, 0, 0);
-    return next.getTime() - now.getTime();
-  })();
-  setTimeout(function scheduleNightlyCleanup() {
-    runAutoCleanup().then((n) => {
-      if (n > 0) console.log(`Nightly auto-cleanup: deleted ${n} old upload(s)`);
-    });
-    setTimeout(scheduleNightlyCleanup, 24 * 60 * 60 * 1000);
-  }, msUntil2am);
+  if (!process.env.VERCEL) {
+    const msUntil2am = (() => {
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 2, 0, 0);
+      return next.getTime() - now.getTime();
+    })();
+    setTimeout(function scheduleNightlyCleanup() {
+      runAutoCleanup().then((n) => {
+        if (n > 0) log(`Nightly auto-cleanup: deleted ${n} old upload(s)`);
+      });
+      setTimeout(scheduleNightlyCleanup, 24 * 60 * 60 * 1000);
+    }, msUntil2am);
 
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`express server serving on port ${port}`);
-    },
-  );
-})();
+    const port = parseInt(process.env.PORT || "5000", 10);
+    server.listen(
+      { port, host: "0.0.0.0", reusePort: true },
+      () => { log(`express server serving on port ${port}`); },
+    );
+  }
+}
+
+if (!process.env.VERCEL) {
+  initApp().catch(console.error);
+}
+
+export default async function handler(req: Request, res: Response): Promise<void> {
+  if (!_initPromise) _initPromise = initApp();
+  await _initPromise;
+  (app as unknown as (req: Request, res: Response) => void)(req, res);
+}
