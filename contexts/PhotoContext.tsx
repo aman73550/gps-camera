@@ -108,18 +108,18 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
-        if (data.guestLimit) {
+        if (data.guestLimit != null) {
           setTierLimits({
             guestLimit: data.guestLimit,
-            standardDailyLimit: data.standardDailyLimit,
-            standardMonthlyLimit: data.standardMonthlyLimit,
+            standardDailyLimit: data.standardDailyLimit ?? 50,
+            standardMonthlyLimit: data.standardMonthlyLimit ?? 1000,
           });
         }
-        if (data.imageMaxWidth) {
+        if (data.imageMaxWidth != null) {
           setCompressionSettings({
             maxWidth: data.imageMaxWidth,
             quality: data.imageQuality ?? 50,
-            format: data.imageFormat ?? "auto",
+            format: (data.imageFormat || "auto") as "auto" | "jpeg" | "webp",
             maxFileMb: data.imageMaxFileMb ?? 5,
           });
         }

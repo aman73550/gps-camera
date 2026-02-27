@@ -161,16 +161,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!phone) return res.status(400).json({ error: "Phone required" });
 
       let tier: "standard" | "pro" = "standard";
+      let banned = false;
+      let warned = false;
+      let warnMessage: string | null = null;
+      let banReason: string | null = null;
+
       if (supabase) {
         const { data } = await supabase
           .from("profiles")
-          .select("tier")
+          .select("tier, banned, warned, warn_message, ban_reason")
           .eq("phone", phone)
           .single();
         if (data?.tier) tier = data.tier as "standard" | "pro";
+        if (data?.banned) banned = true;
+        if (data?.warned) { warned = true; warnMessage = data.warn_message || null; }
+        if (data?.ban_reason) banReason = data.ban_reason || null;
       }
 
-      return res.json({ success: true, phone, tier });
+      return res.json({ success: true, phone, tier, banned, warned, warnMessage, banReason });
     } catch {
       return res.status(500).json({ error: "Server error" });
     }

@@ -302,7 +302,7 @@ export async function warnUser(
   const { error } = await supabase
     .from("profiles")
     .update({ warned: true, warn_message: message, warned_at: new Date().toISOString() })
-    .eq("phone", decodeURIComponent(phone));
+    .eq("phone", phone);
   return !error;
 }
 
@@ -314,7 +314,7 @@ export async function banUser(
   const { error } = await supabase
     .from("profiles")
     .update({ banned: true, ban_reason: reason, banned_at: new Date().toISOString() })
-    .eq("phone", decodeURIComponent(phone));
+    .eq("phone", phone);
   return !error;
 }
 
@@ -323,7 +323,7 @@ export async function unbanUser(phone: string): Promise<boolean> {
   const { error } = await supabase
     .from("profiles")
     .update({ banned: false, ban_reason: null, banned_at: null })
-    .eq("phone", decodeURIComponent(phone));
+    .eq("phone", phone);
   return !error;
 }
 

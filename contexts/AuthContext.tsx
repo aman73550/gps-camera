@@ -7,12 +7,13 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native";
 import { getUnmergedPhotos } from "@/lib/photo-storage";
 import { mergeGuestActivity, MergeResult, MergeProgress } from "@/lib/merge";
 import type { CompressionSettings } from "@/lib/upload";
 
 const AUTH_KEY = "auth_user_v2";
+const WARN_SEEN_KEY = "warn_seen_v1";
 
 function getBase(): string {
   if (Platform.OS === "web") return "";
@@ -27,10 +28,20 @@ export interface AuthUser {
   tier: "standard" | "pro";
 }
 
+interface ProfileData {
+  tier: "standard" | "pro";
+  banned: boolean;
+  warned: boolean;
+  warnMessage: string | null;
+  banReason: string | null;
+}
+
 interface AuthContextValue {
   isLoggedIn: boolean;
   user: AuthUser | null;
   tier: "guest" | "standard" | "pro";
+  isBanned: boolean;
+  warnMessage: string | null;
   loginModalVisible: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
@@ -58,12 +69,19 @@ async function apiLogin(phone: string): Promise<{ phone: string; tier: "standard
   return res.json();
 }
 
-async function apiGetProfile(phone: string): Promise<{ tier: "standard" | "pro" }> {
+async function apiGetProfile(phone: string): Promise<ProfileData> {
   const res = await fetch(`${getBase()}/api/auth/profile`, {
     headers: { "x-user-phone": phone },
   });
   if (!res.ok) throw new Error("Profile fetch failed");
-  return res.json();
+  const data = await res.json();
+  return {
+    tier: (data.tier as "standard" | "pro") || "standard",
+    banned: !!data.banned,
+    warned: !!data.warned,
+    warnMessage: data.warnMessage || null,
+    banReason: data.banReason || null,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -72,25 +90,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [syncPromptVisible, setSyncPromptVisible] = useState(false);
   const [syncPhotoCount, setSyncPhotoCount] = useState(0);
   const [pendingUserForSync, setPendingUserForSync] = useState<AuthUser | null>(null);
+  const [isBanned, setIsBanned] = useState(false);
+  const [warnMessage, setWarnMessage] = useState<string | null>(null);
+
+  const applyProfile = useCallback(async (u: AuthUser, profile: ProfileData) => {
+    if (profile.banned) {
+      setIsBanned(true);
+      setUser(u);
+      Alert.alert(
+        "Account Suspended",
+        `Your account has been suspended.\n\nReason: ${profile.banReason || "Policy violation"}\n\nContact support to appeal.`,
+        [{ text: "OK" }],
+      );
+      return;
+    }
+    setIsBanned(false);
+
+    if (profile.warned && profile.warnMessage) {
+      const warnKey = `${WARN_SEEN_KEY}_${u.phone}`;
+      const lastSeen = await AsyncStorage.getItem(warnKey).catch(() => null);
+      if (lastSeen !== profile.warnMessage) {
+        setWarnMessage(profile.warnMessage);
+        await AsyncStorage.setItem(warnKey, profile.warnMessage).catch(() => {});
+        Alert.alert(
+          "Account Warning",
+          profile.warnMessage,
+          [{ text: "Understood", onPress: () => setWarnMessage(null) }],
+        );
+      }
+    } else {
+      setWarnMessage(null);
+    }
+
+    const updated: AuthUser = { ...u, tier: profile.tier };
+    if (updated.tier !== u.tier) {
+      await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(updated)).catch(() => {});
+    }
+    setUser(updated);
+  }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem(AUTH_KEY).then((v) => {
+    AsyncStorage.getItem(AUTH_KEY).then(async (v) => {
       if (!v) return;
       try {
         const parsed: AuthUser = JSON.parse(v);
         setUser(parsed);
-        apiGetProfile(parsed.phone)
-          .then(({ tier }) => {
-            if (tier !== parsed.tier) {
-              const updated = { ...parsed, tier };
-              setUser(updated);
-              AsyncStorage.setItem(AUTH_KEY, JSON.stringify(updated)).catch(() => {});
-            }
-          })
-          .catch(() => {});
+        const profile = await apiGetProfile(parsed.phone);
+        await applyProfile(parsed, profile);
       } catch {}
     });
-  }, []);
+  }, [applyProfile]);
 
   const login = useCallback(async (phone: string, displayName?: string) => {
     const isEmail = phone.includes("@");
@@ -112,15 +161,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
     setLoginModalVisible(false);
 
+    const profile = await apiGetProfile(u.phone).catch(() => null);
+    if (profile?.banned) {
+      setIsBanned(true);
+      setUser(u);
+      Alert.alert(
+        "Account Suspended",
+        `Your account has been suspended.\n\nReason: ${profile.banReason || "Policy violation"}\n\nContact support to appeal.`,
+        [{ text: "OK" }],
+      );
+      return;
+    }
+
     const unmerged = await getUnmergedPhotos();
     if (unmerged.length > 0) {
       setPendingUserForSync(u);
       setSyncPhotoCount(unmerged.length);
       setSyncPromptVisible(true);
     } else {
-      setUser(u);
+      if (profile) await applyProfile(u, profile);
+      else setUser(u);
     }
-  }, []);
+  }, [applyProfile]);
 
   const acceptSync = useCallback(
     async (
@@ -151,21 +213,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await AsyncStorage.removeItem(AUTH_KEY);
     setUser(null);
+    setIsBanned(false);
+    setWarnMessage(null);
     setSyncPromptVisible(false);
     setPendingUserForSync(null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (!user) return;
+    const target = user ?? pendingUserForSync;
+    if (!target) return;
     try {
-      const { tier } = await apiGetProfile(user.phone);
-      if (tier !== user.tier) {
-        const updated = { ...user, tier };
-        setUser(updated);
-        await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(updated));
-      }
+      const profile = await apiGetProfile(target.phone);
+      await applyProfile(target, profile);
     } catch {}
-  }, [user]);
+  }, [user, pendingUserForSync, applyProfile]);
 
   const tier: "guest" | "standard" | "pro" = (user ?? pendingUserForSync)
     ? ((user ?? pendingUserForSync)!.tier ?? "standard")
@@ -177,6 +238,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoggedIn: !!(user ?? pendingUserForSync),
         user: user ?? pendingUserForSync,
         tier,
+        isBanned,
+        warnMessage,
         loginModalVisible,
         openLoginModal: () => setLoginModalVisible(true),
         closeLoginModal: () => setLoginModalVisible(false),
