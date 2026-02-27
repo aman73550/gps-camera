@@ -126,9 +126,147 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+function verifyPage({ upload, error }: { upload?: Record<string, unknown>; error?: string }): string {
+  const title = upload ? `Verified Photo · ${upload["serial_number"]}` : "Verified GPS Camera";
+  const imgSrc = upload ? `/api/public/image/${encodeURIComponent(upload["serial_number"] as string)}` : null;
+  const date = upload?.["created_at"] ? new Date(upload["created_at"] as string).toLocaleString("en-IN", {
+    weekday: "short", year: "numeric", month: "long", day: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  }) : null;
+  const mapsUrl = upload
+    ? `https://www.google.com/maps?q=${upload["latitude"]},${upload["longitude"]}`
+    : null;
+
+  return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1a1a2e">
+<title>${title}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#0f0f1a;color:#e8e8f0;min-height:100vh;padding:0}
+.header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+  padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;gap:12px;}
+.logo{font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+.logo span{color:#FFD700}
+.verified-badge{background:rgba(76,175,80,.18);border:1px solid rgba(76,175,80,.5);
+  color:#81C784;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.content{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+.photo-wrap{border-radius:16px;overflow:hidden;background:#1e1e2e;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);margin-bottom:20px;position:relative}
+.photo-wrap img{width:100%;display:block;max-height:70vh;object-fit:contain;background:#111}
+.verified-strip{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.7));
+  padding:24px 16px 10px;display:flex;align-items:center;gap:8px}
+.shield{font-size:18px}.verified-text{font-size:13px;font-weight:700;color:#81C784}
+.info-card{background:#1e1e2e;border-radius:14px;overflow:hidden;margin-bottom:16px;
+  border:1px solid rgba(255,255,255,.07)}
+.info-header{padding:12px 16px;background:rgba(255,255,255,.04);
+  font-size:11px;font-weight:700;letter-spacing:1px;color:#888;text-transform:uppercase}
+.info-row{display:flex;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.05);
+  gap:12px;align-items:flex-start}
+.info-row:last-child{border-bottom:none}
+.info-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.info-key{font-size:12px;color:#888;margin-bottom:3px;font-weight:600}
+.info-val{font-size:14px;color:#e8e8f0;font-weight:500;word-break:break-all}
+.info-val.mono{font-family:monospace;font-size:13px;color:#FFD700;letter-spacing:.5px}
+.map-btn{display:flex;align-items:center;gap:8px;background:#2563EB;color:#fff;
+  border:none;border-radius:10px;padding:12px 18px;font-size:14px;font-weight:700;
+  cursor:pointer;width:100%;justify-content:center;text-decoration:none;
+  margin-bottom:16px;transition:opacity .15s}
+.map-btn:hover{opacity:.88}
+.error-card{background:#2a0a0a;border:1px solid rgba(244,67,54,.3);border-radius:14px;
+  padding:32px 20px;text-align:center}
+.error-icon{font-size:40px;margin-bottom:12px}
+.error-title{font-size:18px;font-weight:700;color:#EF5350;margin-bottom:8px}
+.error-msg{font-size:14px;color:#aaa;line-height:1.6}
+.footer{text-align:center;font-size:12px;color:#555;padding:24px 16px;
+  border-top:1px solid rgba(255,255,255,.05)}
+.footer b{color:#888}
+.flagged-banner{background:#4a0a0a;border:1px solid rgba(244,67,54,.4);
+  border-radius:10px;padding:12px 16px;display:flex;gap:10px;align-items:center;
+  margin-bottom:16px;font-size:13px;color:#EF5350}
+</style>
+</head><body>
+<div class="header">
+  <div class="logo">📷 Verified <span>GPS</span> Camera</div>
+  ${upload ? '<div class="verified-badge">✓ VERIFIED</div>' : ''}
+</div>
+<div class="content">
+${error ? `
+  <div class="error-card">
+    <div class="error-icon">🔍</div>
+    <div class="error-title">Record Not Found</div>
+    <div class="error-msg">${error}<br><br>Make sure you scanned the QR code correctly from a Verified GPS Camera photo.</div>
+  </div>
+` : `
+  ${(upload?.["flagged"] as boolean) ? `<div class="flagged-banner">🚩 <span>This image has been flagged by a moderator${upload["flag_reason"] ? `: ${upload["flag_reason"]}` : ""}.</span></div>` : ""}
+  ${imgSrc && !(upload?.["flagged"] as boolean) ? `
+  <div class="photo-wrap">
+    <img src="${imgSrc}" alt="Verified Photo" loading="lazy" />
+    <div class="verified-strip">
+      <div class="shield">🛡️</div>
+      <div class="verified-text">GPS-Verified Photo · Tamper-Proof Record</div>
+    </div>
+  </div>` : ""}
+  <div class="info-card">
+    <div class="info-header">📍 Location Details</div>
+    ${upload?.["location_name"] ? `<div class="info-row"><div class="info-icon">🏙️</div><div><div class="info-key">Location</div><div class="info-val">${upload["location_name"]}</div></div></div>` : ""}
+    ${upload?.["address"] ? `<div class="info-row"><div class="info-icon">📬</div><div><div class="info-key">Address</div><div class="info-val">${upload["address"]}</div></div></div>` : ""}
+    <div class="info-row"><div class="info-icon">🌐</div><div><div class="info-key">Coordinates</div><div class="info-val">${Number(upload?.["latitude"]).toFixed(6)}°N, ${Number(upload?.["longitude"]).toFixed(6)}°E</div></div></div>
+    ${upload?.["altitude"] ? `<div class="info-row"><div class="info-icon">⛰️</div><div><div class="info-key">Altitude</div><div class="info-val">${Number(upload?.["altitude"]).toFixed(1)} m</div></div></div>` : ""}
+    ${upload?.["plus_code"] ? `<div class="info-row"><div class="info-icon">➕</div><div><div class="info-key">Plus Code</div><div class="info-val">${upload["plus_code"]}</div></div></div>` : ""}
+  </div>
+  <div class="info-card">
+    <div class="info-header">🔐 Verification Details</div>
+    <div class="info-row"><div class="info-icon">🔢</div><div><div class="info-key">Serial Number</div><div class="info-val mono">${upload?.["serial_number"]}</div></div></div>
+    ${date ? `<div class="info-row"><div class="info-icon">📅</div><div><div class="info-key">Captured On</div><div class="info-val">${date}</div></div></div>` : ""}
+    ${upload?.["file_size_kb"] ? `<div class="info-row"><div class="info-icon">💾</div><div><div class="info-key">File Size</div><div class="info-val">${upload["file_size_kb"]} KB</div></div></div>` : ""}
+    <div class="info-row"><div class="info-icon">👤</div><div><div class="info-key">Uploaded By</div><div class="info-val">${upload?.["is_guest"] ? "Guest User" : "Registered User"}</div></div></div>
+  </div>
+  ${mapsUrl ? `<a class="map-btn" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ View on Google Maps</a>` : ""}
+`}
+</div>
+<div class="footer">Powered by <b>Verified GPS Camera</b> · GPS data is cryptographically tied to this image</div>
+</body></html>`;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  // ── Admin login — issues a session token (never stores password in URL) ──
+  // ── Public: serve image by serial (no auth needed — serial IS the access key) ──
+  app.get("/api/public/image/:serial", async (req: Request, res: Response) => {
+    if (!supabase) return res.status(503).send("Service unavailable");
+    const serial = req.params["serial"] as string;
+    const { data } = await supabase
+      .from("uploads")
+      .select("file_path, flagged")
+      .eq("serial_number", serial)
+      .single();
+    if (!data?.file_path) return res.status(404).send("Not found");
+    if (data.flagged) return res.status(403).send("This image has been flagged and is unavailable");
+    const filename = path.basename(data.file_path);
+    const filePath = path.join(uploadsDir, filename);
+    if (!fs.existsSync(filePath)) return res.status(404).send("Image file not found");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.sendFile(filePath);
+  });
+
+  // ── Public: verification page (scanned from QR on photo) ──
+  app.get("/v/:serial", async (req: Request, res: Response) => {
+    if (!supabase) {
+      return res.send(verifyPage({ error: "Database unavailable" }));
+    }
+    const serial = req.params["serial"] as string;
+    const { data } = await supabase
+      .from("uploads")
+      .select("serial_number, latitude, longitude, altitude, address, location_name, plus_code, file_size_kb, is_guest, created_at, flagged, flag_reason")
+      .eq("serial_number", serial)
+      .single();
+    if (!data) return res.status(404).send(verifyPage({ error: "No record found for this serial number." }));
+    return res.send(verifyPage({ upload: data }));
+  });
+
   app.post("/api/admin/login", (req: Request, res: Response) => {
     const { username, password } = req.body as { username?: string; password?: string };
     if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {

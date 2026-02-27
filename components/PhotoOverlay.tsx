@@ -3,6 +3,12 @@ import { View, Text, StyleSheet } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { QRCodeView } from "./QRCodeView";
 
+function getVerifyUrl(serial: string): string {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain) return `https://${domain}/v/${serial}`;
+  return serial;
+}
+
 interface PhotoOverlayProps {
   latitude: number;
   longitude: number;
@@ -51,7 +57,7 @@ export function PhotoOverlay({
         <View style={styles.leftSection}>
           <View style={styles.qrWrapper}>
             <QRCodeView
-              value={serialNumber || "GPS-CAMERA"}
+              value={getVerifyUrl(serialNumber) || "GPS-CAMERA"}
               size={96}
               backgroundColor="#1a1a1a"
               color="#FFFFFF"
@@ -96,7 +102,7 @@ export function PhotoOverlay({
             </View>
           </View>
           {/* Scan hint */}
-          <Text style={styles.scanHintText}>Scan QR via app for verification</Text>
+          <Text style={styles.scanHintText}>Scan QR with any phone to verify</Text>
         </View>
 
       </View>
