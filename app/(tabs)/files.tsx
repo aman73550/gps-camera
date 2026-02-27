@@ -540,7 +540,7 @@ export default function FilesTab() {
       )}
 
       {/* QR Scan FAB — bottom right, above tab bar */}
-      {!isSelectMode && (
+      {!isSelectMode && !isScanning && (
         <Pressable
           style={({ pressed }) => [
             styles.qrFab,
