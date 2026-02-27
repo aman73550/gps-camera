@@ -143,8 +143,16 @@ function ClassicTabLayout() {
   );
 }
 
+function checkLiquidGlass(): boolean {
+  try {
+    return Platform.OS === "ios" && isLiquidGlassAvailable();
+  } catch {
+    return false;
+  }
+}
+
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
+  if (checkLiquidGlass()) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;
