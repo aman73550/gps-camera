@@ -20,7 +20,6 @@ import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
 import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
-import { QRCodeView } from "@/components/QRCodeView";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
 import { PhotoRecord, markServerDeleteRequested } from "@/lib/photo-storage";
 import { uploadPhoto, getServerBase, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR } from "@/lib/upload";
@@ -351,9 +350,6 @@ export default function PhotoDetailScreen() {
                 <Text style={styles.serialLabel}>Serial Number</Text>
                 <Text style={styles.serialValue}>{photo.serialNumber}</Text>
               </View>
-              <View style={styles.qrContainer}>
-                <QRCodeView value={photo.serialNumber} size={72} />
-              </View>
             </View>
 
             <View style={styles.divider} />
@@ -501,7 +497,6 @@ const styles = StyleSheet.create({
   serialInfo: { flex: 1 },
   serialLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 },
   serialValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.light.onSurface, letterSpacing: 0.5 },
-  qrContainer: { marginLeft: 16 },
   divider: { height: 1, backgroundColor: Colors.light.outline, marginVertical: 20 },
   infoSection: { gap: 20 },
   infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
