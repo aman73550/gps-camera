@@ -43,13 +43,12 @@ interface Props {
 }
 
 export function LoginModal({ visible, onClose }: Props) {
-  const { login, user, tier } = useAuth();
+  const { login } = useAuth();
   const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0]);
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPicker, setShowPicker] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [showPhoneSection, setShowPhoneSection] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -84,8 +83,7 @@ export function LoginModal({ visible, onClose }: Props) {
       const info = await res.json();
       if (!info.email) throw new Error("Could not get email from Google.");
       await login(info.email, info.name ?? info.given_name ?? undefined);
-      setSuccess(true);
-      setTimeout(() => { setSuccess(false); onClose(); }, 1400);
+      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Google sign-in failed.");
     } finally {
@@ -114,8 +112,7 @@ export function LoginModal({ visible, onClose }: Props) {
         ? `${credential.fullName.givenName} ${credential.fullName.familyName ?? ""}`.trim()
         : undefined;
       await login(identifier, name);
-      setSuccess(true);
-      setTimeout(() => { setSuccess(false); onClose(); }, 1400);
+      onClose();
     } catch (e: any) {
       if (e?.code !== "ERR_REQUEST_CANCELED") {
         setError(e instanceof Error ? e.message : "Apple sign-in failed.");
@@ -132,8 +129,8 @@ export function LoginModal({ visible, onClose }: Props) {
     try {
       const fullNumber = `${countryCode.code}${phone.trim()}`;
       await login(fullNumber);
-      setSuccess(true);
-      setTimeout(() => { setSuccess(false); setPhone(""); onClose(); }, 1400);
+      setPhone("");
+      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign in failed. Please try again.");
     } finally {
@@ -144,16 +141,9 @@ export function LoginModal({ visible, onClose }: Props) {
   const handleClose = () => {
     setError("");
     setPhone("");
-    setSuccess(false);
     setShowPicker(false);
     setShowPhoneSection(false);
     onClose();
-  };
-
-  const TIER_LABEL: Record<string, string> = {
-    pro: "⭐ Pro — Unlimited uploads",
-    standard: "👤 Standard — 50/day · 1,000/month",
-    guest: "🚶 Guest — 20 total",
   };
 
   return (
@@ -175,19 +165,7 @@ export function LoginModal({ visible, onClose }: Props) {
               <Ionicons name="close" size={20} color={Colors.light.textSecondary} />
             </Pressable>
 
-            {/* Success state */}
-            {success ? (
-              <View style={styles.successWrap}>
-                <View style={styles.successCircle}>
-                  <Ionicons name="checkmark" size={40} color="#FFF" />
-                </View>
-                <Text style={styles.successTitle}>Signed In!</Text>
-                <Text style={styles.successSub}>
-                  {TIER_LABEL[user?.tier ?? tier] || TIER_LABEL.standard}
-                </Text>
-              </View>
-            ) : (
-              <>
+            <>
                 <View style={styles.iconWrap}>
                   <View style={styles.iconCircle}>
                     <Ionicons name="shield-checkmark-outline" size={36} color={Colors.light.primary} />
@@ -349,8 +327,7 @@ export function LoginModal({ visible, onClose }: Props) {
                 >
                   <Text style={styles.guestText}>Continue as Guest (20 uploads)</Text>
                 </Pressable>
-              </>
-            )}
+            </>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -384,15 +361,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surfaceVariant,
     justifyContent: "center", alignItems: "center",
   },
-  successWrap: { alignItems: "center", paddingVertical: 32 },
-  successCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: "#43A047",
-    justifyContent: "center", alignItems: "center",
-    marginBottom: 16,
-  },
-  successTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#1a1a1a", marginBottom: 6 },
-  successSub: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#555", textAlign: "center" },
   iconWrap: { alignItems: "center", marginTop: 8, marginBottom: 16 },
   iconCircle: {
     width: 72, height: 72, borderRadius: 36,
