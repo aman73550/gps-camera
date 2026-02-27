@@ -794,8 +794,7 @@
 </nav>
 
 <script>
-let adminUsername = localStorage.getItem('admin_username') || '';
-let adminPassword = localStorage.getItem('admin_password') || '';
+let adminToken = sessionStorage.getItem('admin_token') || '';
 let uploadsPage = 1;
 let uploadsTotalPages = 1;
 let uploadsFilter = 'all';
@@ -813,8 +812,7 @@ const PAGE_TITLES = { dashboard: 'Dashboard', users: 'Users', uploads: 'Uploads'
 
 function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers };
-  if (adminUsername) headers['X-Admin-Username'] = adminUsername;
-  if (adminPassword) headers['X-Admin-Password'] = adminPassword;
+  if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
   return fetch(path, { ...opts, headers });
 }
 
@@ -822,22 +820,33 @@ async function submitToken() {
   const user = document.getElementById('username-input').value.trim();
   const pass = document.getElementById('password-input').value.trim();
   if (!user || !pass) { document.getElementById('auth-error').style.display = 'block'; return; }
-  adminUsername = user; adminPassword = pass;
-  const r = await api('/api/admin/stats');
-  if (r.status === 401) {
+  const r = await fetch('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user, password: pass })
+  });
+  if (!r.ok) {
     document.getElementById('auth-error').style.display = 'block';
     document.getElementById('password-input').value = '';
     return;
   }
-  localStorage.setItem('admin_username', user);
-  localStorage.setItem('admin_password', pass);
+  const data = await r.json();
+  adminToken = data.token;
+  sessionStorage.setItem('admin_token', adminToken);
+  localStorage.removeItem('admin_username');
+  localStorage.removeItem('admin_password');
   document.getElementById('auth-overlay').style.display = 'none';
   initApp();
 }
 
 async function checkAuth() {
   const r = await api('/api/admin/stats');
-  if (r.status === 401) { document.getElementById('auth-overlay').style.display = 'flex'; return false; }
+  if (r.status === 401) {
+    sessionStorage.removeItem('admin_token');
+    adminToken = '';
+    document.getElementById('auth-overlay').style.display = 'flex';
+    return false;
+  }
   return r;
 }
 
@@ -948,9 +957,7 @@ async function changeTier(phone, newTier, btn) {
 }
 
 function imgUrl(filename) {
-  const u = encodeURIComponent(adminUsername);
-  const p = encodeURIComponent(adminPassword);
-  return `/api/admin/image/${encodeURIComponent(filename)}?u=${u}&p=${p}`;
+  return `/api/admin/image/${encodeURIComponent(filename)}?token=${encodeURIComponent(adminToken)}`;
 }
 
 function skeletonGrid(n) {

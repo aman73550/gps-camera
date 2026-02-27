@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import multer from "multer";
 import * as path from "path";
 import * as fs from "fs";
+import * as crypto from "crypto";
 import {
   supabase,
   checkUploadLimit,
@@ -94,17 +95,60 @@ async function tierCheckMiddleware(
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const adminSessions = new Map<string, number>();
+
+function pruneExpiredSessions() {
+  const now = Date.now();
+  for (const [token, expiry] of adminSessions) {
+    if (now > expiry) adminSessions.delete(token);
+  }
+}
+
+function isValidSession(token: string | undefined): boolean {
+  if (!token) return false;
+  pruneExpiredSessions();
+  const expiry = adminSessions.get(token);
+  return expiry !== undefined && Date.now() <= expiry;
+}
+
 function adminAuth(req: Request, res: Response, next: NextFunction) {
-  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) return next();
-  const username = (req.headers["x-admin-username"] as string | undefined) || (req.query["u"] as string | undefined);
-  const password = (req.headers["x-admin-password"] as string | undefined) || (req.query["p"] as string | undefined);
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    return res.status(503).json({ error: "Admin credentials not configured" });
+  }
+  const authHeader = req.headers["authorization"] as string | undefined;
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  const queryToken = req.query["token"] as string | undefined;
+  const token = bearerToken || queryToken;
+  if (!isValidSession(token)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   next();
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+
+  // ── Admin login — issues a session token (never stores password in URL) ──
+  app.post("/api/admin/login", (req: Request, res: Response) => {
+    const { username, password } = req.body as { username?: string; password?: string };
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+      return res.status(503).json({ error: "Admin credentials not configured" });
+    }
+    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    const token = crypto.randomBytes(32).toString("hex");
+    adminSessions.set(token, Date.now() + SESSION_TTL_MS);
+    return res.json({ token });
+  });
+
+  // ── Admin logout — invalidates the session token ──
+  app.post("/api/admin/logout", adminAuth, (req: Request, res: Response) => {
+    const authHeader = req.headers["authorization"] as string | undefined;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    if (token) adminSessions.delete(token);
+    return res.json({ ok: true });
+  });
 
   // ── Auth: login / register by phone ─────────────────────────
   app.post("/api/auth/login", async (req: Request, res: Response) => {
