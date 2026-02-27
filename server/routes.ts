@@ -617,7 +617,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       "admin.html",
     );
     if (fs.existsSync(adminPath)) {
-      res.sendFile(adminPath);
+      const html = fs.readFileSync(adminPath, "utf-8");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.status(200).send(html);
     } else {
       res.status(404).send("Admin panel not found");
     }
