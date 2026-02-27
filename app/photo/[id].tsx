@@ -371,7 +371,6 @@ export default function PhotoDetailScreen() {
                   <Text style={[styles.infoValue, styles.tappableText]}>{photo.locationName ?? photo.address}</Text>
                   <Text style={styles.infoSubValue}>{photo.address}</Text>
                 </View>
-                <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
               </Pressable>
 
               <Pressable
@@ -392,15 +391,8 @@ export default function PhotoDetailScreen() {
                       <Text style={styles.coordLabel}>LON</Text>
                       <Text style={[styles.coordValue, styles.tappableText]}>{photo.longitude.toFixed(6)}°</Text>
                     </View>
-                    {(photo.altitude ?? 0) > 0 && (
-                      <View style={styles.coordItem}>
-                        <Text style={styles.coordLabel}>ALTITUDE</Text>
-                        <Text style={styles.coordValue}>{Math.round(photo.altitude ?? 0)} m</Text>
-                      </View>
-                    )}
                   </View>
                 </View>
-                <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
               </Pressable>
 
               {photo.plusCode ? (
@@ -415,7 +407,6 @@ export default function PhotoDetailScreen() {
                     <Text style={styles.infoLabel}>Plus Code</Text>
                     <Text style={[styles.infoValue, styles.tappableText]}>{photo.plusCode}</Text>
                   </View>
-                  <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
                 </Pressable>
               ) : null}
 

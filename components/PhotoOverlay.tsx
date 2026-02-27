@@ -78,11 +78,6 @@ export function PhotoOverlay({
           <Text style={styles.coordText} numberOfLines={1}>
             {`Lat: ${latitude.toFixed(6)}  Lon: ${longitude.toFixed(6)}`}
           </Text>
-          {altitude > 0 && (
-            <Text style={styles.coordText} numberOfLines={1}>
-              {`Altitude: ${Math.round(altitude)} m`}
-            </Text>
-          )}
           <Text style={styles.plusCodeText} numberOfLines={1}>
             Plus Code : {plusCode}
           </Text>
