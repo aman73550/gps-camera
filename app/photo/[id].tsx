@@ -383,10 +383,22 @@ export default function PhotoDetailScreen() {
                 </View>
                 <View style={styles.infoTextWrap}>
                   <Text style={styles.infoLabel}>GPS Coordinates</Text>
-                  <Text style={[styles.infoValue, styles.tappableText]}>{photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}</Text>
-                  {(photo.altitude ?? 0) > 0 && (
-                    <Text style={styles.infoSubValue}>Altitude: {Math.round(photo.altitude ?? 0)} m</Text>
-                  )}
+                  <View style={styles.coordGrid}>
+                    <View style={styles.coordItem}>
+                      <Text style={styles.coordLabel}>LAT</Text>
+                      <Text style={[styles.coordValue, styles.tappableText]}>{photo.latitude.toFixed(6)}°</Text>
+                    </View>
+                    <View style={styles.coordItem}>
+                      <Text style={styles.coordLabel}>LON</Text>
+                      <Text style={[styles.coordValue, styles.tappableText]}>{photo.longitude.toFixed(6)}°</Text>
+                    </View>
+                    {(photo.altitude ?? 0) > 0 && (
+                      <View style={styles.coordItem}>
+                        <Text style={styles.coordLabel}>ALT</Text>
+                        <Text style={styles.coordValue}>{Math.round(photo.altitude ?? 0)} m</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 <Ionicons name="open-outline" size={15} color={Colors.light.primary} style={{ marginTop: 4, opacity: 0.7 }} />
               </Pressable>
@@ -515,4 +527,26 @@ const styles = StyleSheet.create({
     marginHorizontal: -10,
   },
   tappableText: { color: Colors.light.primary },
+  coordGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
+  },
+  coordItem: {
+    minWidth: 100,
+  },
+  coordLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textSecondary,
+    letterSpacing: 1,
+    marginBottom: 1,
+  },
+  coordValue: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.onSurface,
+    letterSpacing: 0.3,
+  },
 });

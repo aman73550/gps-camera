@@ -70,9 +70,19 @@ export function PhotoOverlay({
           <Text style={styles.locationTitle} numberOfLines={1}>
             {locationName || "Unknown Location"}
           </Text>
-          <Text style={styles.addressText} numberOfLines={1}>
-            {address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`}
+          {!!address && (
+            <Text style={styles.addressText} numberOfLines={1}>
+              {address}
+            </Text>
+          )}
+          <Text style={styles.coordText} numberOfLines={1}>
+            {`Lat: ${latitude.toFixed(6)}  Lon: ${longitude.toFixed(6)}`}
           </Text>
+          {altitude > 0 && (
+            <Text style={styles.coordText} numberOfLines={1}>
+              {`Alt: ${Math.round(altitude)} m`}
+            </Text>
+          )}
           <Text style={styles.plusCodeText} numberOfLines={1}>
             Plus Code : {plusCode}
           </Text>
@@ -175,6 +185,12 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: "Inter_400Regular",
     lineHeight: 16,
+  },
+  coordText: {
+    color: "rgba(160,220,255,0.95)",
+    fontSize: 11.5,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0.2,
   },
   plusCodeText: {
     color: "rgba(255,255,255,0.80)",
