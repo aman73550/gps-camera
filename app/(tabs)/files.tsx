@@ -21,7 +21,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
-import { router, useNavigation } from "expo-router";
+import { router, useNavigation, useFocusEffect } from "expo-router";
 import Animated, {
   useSharedValue,
   withTiming,
@@ -116,6 +116,12 @@ export default function FilesTab() {
     });
     return unsub;
   }, [isScanning, navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => setIsScanning(false);
+    }, [])
+  );
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -365,30 +371,6 @@ export default function FilesTab() {
     ]);
   }, [selectedPhotos, removePhotos, exitSelectMode, requestServerDeletion]);
 
-  if (isScanning) {
-    return (
-      <View style={styles.scannerContainer}>
-        <CameraView style={StyleSheet.absoluteFill} barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={handleBarCodeScanned} />
-        <View style={[styles.scannerTopBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
-          <Pressable style={({ pressed }) => [styles.scannerCloseBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => setIsScanning(false)}>
-            <Ionicons name="close" size={28} color="#FFF" />
-          </Pressable>
-          <Text style={styles.scannerTitle}>Scan QR Code</Text>
-          <View style={{ width: 44 }} />
-        </View>
-        <View style={styles.scannerFrame}>
-          <View style={styles.scannerCornerTL} />
-          <View style={styles.scannerCornerTR} />
-          <View style={styles.scannerCornerBL} />
-          <View style={styles.scannerCornerBR} />
-        </View>
-        <View style={styles.scannerHint}>
-          <Text style={styles.scannerHintText}>Point camera at a photo's QR code</Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <FadeInView style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
 
@@ -595,6 +577,29 @@ export default function FilesTab() {
         }}
         onDismiss={() => setShowLimitModal(false)}
       />
+
+      {/* QR Scanner overlay — sits above files content, below tab bar */}
+      {isScanning && (
+        <Pressable style={styles.scannerOverlay} onPress={() => setIsScanning(false)}>
+          <CameraView style={StyleSheet.absoluteFill} barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={handleBarCodeScanned} />
+          <Pressable style={[styles.scannerTopBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]} onPress={(e) => e.stopPropagation()}>
+            <Pressable style={({ pressed }) => [styles.scannerCloseBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => setIsScanning(false)}>
+              <Ionicons name="close" size={28} color="#FFF" />
+            </Pressable>
+            <Text style={styles.scannerTitle}>Scan QR Code</Text>
+            <View style={{ width: 44 }} />
+          </Pressable>
+          <View style={[styles.scannerFrame, { pointerEvents: "none" }]}>
+            <View style={styles.scannerCornerTL} />
+            <View style={styles.scannerCornerTR} />
+            <View style={styles.scannerCornerBL} />
+            <View style={styles.scannerCornerBR} />
+          </View>
+          <View style={[styles.scannerHint, { pointerEvents: "none" }]}>
+            <Text style={styles.scannerHintText}>Tap anywhere to close</Text>
+          </View>
+        </Pressable>
+      )}
     </FadeInView>
   );
 }
@@ -819,7 +824,7 @@ const styles = StyleSheet.create({
   },
   batchBtnDelete: { backgroundColor: "rgba(255,69,58,0.1)" },
   batchBtnText: { color: "#FFF", fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  scannerContainer: { flex: 1, backgroundColor: "#000" },
+  scannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "#000", zIndex: 50 },
   scannerTopBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 8, position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
   scannerCloseBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
   scannerTitle: { color: "#FFF", fontSize: 17, fontFamily: "Inter_600SemiBold" },
