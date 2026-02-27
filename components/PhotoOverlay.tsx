@@ -80,7 +80,7 @@ export function PhotoOverlay({
           </Text>
           {altitude > 0 && (
             <Text style={styles.coordText} numberOfLines={1}>
-              {`Alt: ${Math.round(altitude)} m`}
+              {`Altitude: ${Math.round(altitude)} m`}
             </Text>
           )}
           <Text style={styles.plusCodeText} numberOfLines={1}>

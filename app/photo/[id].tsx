@@ -394,7 +394,7 @@ export default function PhotoDetailScreen() {
                     </View>
                     {(photo.altitude ?? 0) > 0 && (
                       <View style={styles.coordItem}>
-                        <Text style={styles.coordLabel}>ALT</Text>
+                        <Text style={styles.coordLabel}>ALTITUDE</Text>
                         <Text style={styles.coordValue}>{Math.round(photo.altitude ?? 0)} m</Text>
                       </View>
                     )}
