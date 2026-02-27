@@ -313,9 +313,38 @@
     border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; background: none; color: #555; }
 
   /* ── Image lightbox ─────────────────────────────── */
-  .lightbox-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.88);
-    display: flex; align-items: center; justify-content: center; z-index: 4000; cursor: zoom-out; padding: 16px; }
-  .lightbox-img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; }
+  .lightbox-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.93);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 4000; padding: 16px; }
+  .lightbox-top { width: 100%; max-width: 900px; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 4px 10px; gap: 10px; }
+  .lightbox-serial { font-family: monospace; font-size: 13px; color: #ddd; font-weight: 700;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .lightbox-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .lb-btn { background: rgba(255,255,255,.13); border: none; color: #fff; border-radius: 8px;
+    padding: 7px 14px; font-size: 13px; cursor: pointer; transition: background .15s;
+    display: flex; align-items: center; gap: 5px; text-decoration: none; }
+  .lb-btn:hover { background: rgba(255,255,255,.24); }
+  .lb-close { font-size: 20px; width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
+  .lightbox-img-wrap { flex: 1; display: flex; align-items: center; justify-content: center;
+    width: 100%; max-width: 900px; min-height: 0; }
+  .lightbox-img { max-width: 100%; max-height: 76vh; border-radius: 10px; object-fit: contain;
+    box-shadow: 0 8px 40px rgba(0,0,0,.6); cursor: default; }
+  .lightbox-info { width: 100%; max-width: 900px; padding: 10px 4px 0;
+    display: flex; gap: 16px; flex-wrap: wrap; }
+  .lightbox-meta-item { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+  .lightbox-meta-item b { color: #eee; font-weight: 500; }
+  .lb-loading { font-size: 13px; color: #aaa; display: flex; align-items: center; gap: 8px; }
+  .lb-spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.2);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .lb-err { font-size: 13px; color: #f88; }
+  .img-thumb:hover { opacity: 0.88; transition: opacity .15s; }
+  .img-thumb .view-overlay { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; background: rgba(0,0,0,0); transition: background .2s; z-index: 2; }
+  .img-thumb:hover .view-overlay { background: rgba(0,0,0,.28); }
+  .view-overlay-icon { font-size: 28px; opacity: 0; transition: opacity .2s; }
+  .img-thumb:hover .view-overlay-icon { opacity: 1; }
 
   /* ── Mobile responsive ──────────────────────────── */
   @media (max-width: 768px) {
@@ -551,8 +580,22 @@
     </div>
 
     <!-- Lightbox -->
-    <div class="lightbox-overlay" id="lightbox" style="display:none" onclick="closeLightbox()">
-      <img class="lightbox-img" id="lightbox-img" src="" alt="Upload" />
+    <div class="lightbox-overlay" id="lightbox" style="display:none" onclick="if(event.target===this)closeLightbox()">
+      <div class="lightbox-top">
+        <span class="lightbox-serial" id="lb-serial"></span>
+        <div class="lightbox-actions">
+          <a class="lb-btn" id="lb-download" href="#" download target="_blank">⬇ Download</a>
+          <button class="lb-btn lb-close" onclick="closeLightbox()">✕</button>
+        </div>
+      </div>
+      <div class="lightbox-img-wrap" id="lb-img-wrap">
+        <div class="lb-loading" id="lb-loading"><div class="lb-spinner"></div> Loading image…</div>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="Upload"
+          style="display:none"
+          onload="document.getElementById('lb-loading').style.display='none';this.style.display='block'"
+          onerror="document.getElementById('lb-loading').innerHTML='<span class=lb-err>⚠ Image not found</span>'" />
+      </div>
+      <div class="lightbox-info" id="lb-info"></div>
     </div>
 
     <!-- QR Scanner Modal -->
@@ -956,8 +999,10 @@ async function changeTier(phone, newTier, btn) {
   if (r.ok) loadUsers(); else { btn.disabled = false; btn.textContent = 'Error'; }
 }
 
-function imgUrl(filename) {
-  return `/api/admin/image/${encodeURIComponent(filename)}?token=${encodeURIComponent(adminToken)}`;
+function imgUrl(filename, thumb) {
+  const t = encodeURIComponent(adminToken);
+  const base = `/api/admin/image/${encodeURIComponent(filename)}?token=${t}`;
+  return thumb ? base + '&thumb=1' : base;
 }
 
 function skeletonGrid(n) {
@@ -1126,20 +1171,25 @@ async function loadUploads() {
     const serial = u.serial_number || '';
     const fn = u.file_path ? u.file_path.split('/').pop() : null;
     const hasImg = !!fn;
-    const iUrl = fn ? imgUrl(fn) : null;
-    const lbUrl = iUrl || '';
+    const thumbUrl = fn ? imgUrl(fn, true) : null;
+    const fullUrl  = fn ? imgUrl(fn, false) : null;
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-    const safePh = phone.replace(/'/g, "&#39;");
-    const safeSer = serial.replace(/'/g, "&#39;");
     const safeSerial = encodeURIComponent(serial);
-    const safePhone = encodeURIComponent(phone);
+    const safePhone  = encodeURIComponent(phone);
+    const lbMeta = encodeURIComponent(JSON.stringify({
+      serial, phone, date: dateStr, size: u.file_size_kb || 0,
+      location: u.address || '', tier, isBanned: !!isBanned, isWarned: !!isWarned
+    }));
     return `
     <div class="img-card${u.flagged ? ' flagged' : ''}${isBanned ? ' user-banned' : ''}" id="card-${serial}">
-      <div class="img-thumb loading" onclick="openLightbox('${lbUrl}')">
+      <div class="img-thumb loading"
+        ${hasImg ? `data-full="${fullUrl}" data-meta="${lbMeta}" onclick="openLightbox(this)"` : ''}
+        style="${hasImg ? 'cursor:pointer' : 'cursor:default'}">
         ${hasImg
-          ? `<img src="${iUrl}" alt="${serial}" loading="lazy"
+          ? `<img src="${thumbUrl}" alt="${serial}" loading="lazy"
                onload="this.classList.add('loaded');this.parentElement.classList.remove('loading')"
-               onerror="this.parentElement.classList.remove('loading');this.parentElement.innerHTML+='<span class=\\'no-img\\'>📷</span>';this.remove()">`
+               onerror="this.parentElement.classList.remove('loading');this.parentElement.innerHTML='<span class=\\'no-img\\'>📷</span>';this.remove()">
+             <div class="view-overlay"><span class="view-overlay-icon">🔍</span></div>`
           : `<span class="no-img">📷</span>`
         }
         ${u.flagged ? `<span class="img-flag-badge">🚩 Flagged</span>` : ''}
@@ -1201,15 +1251,44 @@ function changePage(dir) {
   loadUploads();
 }
 
-function openLightbox(src) {
-  if (!src) return;
-  document.getElementById('lightbox-img').src = src;
+function openLightbox(thumbEl) {
+  const fullSrc = thumbEl.dataset.full;
+  if (!fullSrc) return;
+
+  let meta = {};
+  try { meta = JSON.parse(decodeURIComponent(thumbEl.dataset.meta || '{}')); } catch {}
+
+  const img = document.getElementById('lightbox-img');
+  const loading = document.getElementById('lb-loading');
+  img.style.display = 'none';
+  img.src = '';
+  loading.style.display = 'flex';
+  loading.innerHTML = '<div class="lb-spinner"></div> Loading full image…';
+
+  document.getElementById('lb-serial').textContent = meta.serial || '';
+
+  const dlBtn = document.getElementById('lb-download');
+  dlBtn.href = fullSrc;
+  dlBtn.download = (meta.serial || 'image') + '.jpg';
+
+  const infoEl = document.getElementById('lb-info');
+  infoEl.innerHTML = [
+    meta.date    ? `<div class="lightbox-meta-item">📅 <b>${meta.date}</b></div>` : '',
+    meta.size != null ? `<div class="lightbox-meta-item">💾 <b>${meta.size} KB</b></div>` : '',
+    meta.location ? `<div class="lightbox-meta-item">📍 <b>${meta.location}</b></div>` : '',
+    meta.phone   ? `<div class="lightbox-meta-item">👤 <b>${meta.phone}</b></div>` : '',
+  ].join('');
+
   document.getElementById('lightbox').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  img.src = fullSrc;
 }
 
 function closeLightbox() {
   document.getElementById('lightbox').style.display = 'none';
   document.getElementById('lightbox-img').src = '';
+  document.body.style.overflow = '';
 }
 
 document.addEventListener('keydown', e => {

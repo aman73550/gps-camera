@@ -612,11 +612,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(
     "/api/admin/image/:filename",
     adminAuth,
-    (req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
       const filename = path.basename(req.params["filename"] as string);
       const filePath = path.join(uploadsDir, filename);
       if (!fs.existsSync(filePath)) return res.status(404).send("Not found");
-      res.sendFile(filePath);
+
+      const isThumb = req.query["thumb"] === "1";
+      if (!isThumb) {
+        return res.sendFile(filePath);
+      }
+
+      const thumbsDir = path.join(uploadsDir, "thumbs");
+      if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
+      const thumbPath = path.join(thumbsDir, filename.replace(/\.[^.]+$/, ".jpg"));
+
+      try {
+        if (!fs.existsSync(thumbPath)) {
+          const sharp = (await import("sharp")).default;
+          await sharp(filePath)
+            .resize(280, 200, { fit: "cover", position: "centre" })
+            .jpeg({ quality: 42, progressive: true })
+            .toFile(thumbPath);
+        }
+        if (!fs.existsSync(thumbPath)) return res.sendFile(filePath);
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.sendFile(thumbPath, (err) => {
+          if (err && !res.headersSent) res.sendFile(filePath);
+        });
+      } catch {
+        if (!res.headersSent) return res.sendFile(filePath);
+      }
     },
   );
 
