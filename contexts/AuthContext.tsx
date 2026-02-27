@@ -8,6 +8,9 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+import { getUnmergedPhotos } from "@/lib/photo-storage";
+import { mergeGuestActivity, MergeResult, MergeProgress } from "@/lib/merge";
+import type { CompressionSettings } from "@/lib/upload";
 
 const AUTH_KEY = "auth_user_v2";
 
@@ -34,6 +37,10 @@ interface AuthContextValue {
   login: (phone: string, displayName?: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  syncPromptVisible: boolean;
+  syncPhotoCount: number;
+  acceptSync: (compression?: CompressionSettings, onProgress?: (p: MergeProgress) => void) => Promise<MergeResult>;
+  declineSync: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -62,6 +69,9 @@ async function apiGetProfile(phone: string): Promise<{ tier: "standard" | "pro" 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [syncPromptVisible, setSyncPromptVisible] = useState(false);
+  const [syncPhotoCount, setSyncPhotoCount] = useState(0);
+  const [pendingUserForSync, setPendingUserForSync] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(AUTH_KEY).then((v) => {
@@ -69,7 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsed: AuthUser = JSON.parse(v);
         setUser(parsed);
-        // Refresh tier from server in background
         apiGetProfile(parsed.phone)
           .then(({ tier }) => {
             if (tier !== parsed.tier) {
@@ -101,13 +110,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tier: result.tier ?? "standard",
     };
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
-    setUser(u);
     setLoginModalVisible(false);
+
+    const unmerged = await getUnmergedPhotos();
+    if (unmerged.length > 0) {
+      setPendingUserForSync(u);
+      setSyncPhotoCount(unmerged.length);
+      setSyncPromptVisible(true);
+    } else {
+      setUser(u);
+    }
   }, []);
+
+  const acceptSync = useCallback(
+    async (
+      compression?: CompressionSettings,
+      onProgress?: (p: MergeProgress) => void,
+    ): Promise<MergeResult> => {
+      const target = pendingUserForSync;
+      setSyncPromptVisible(false);
+      if (target) setUser(target);
+      setPendingUserForSync(null);
+
+      if (!target) {
+        return { total: 0, claimed: 0, uploaded: 0, linked: 0, failed: 0 };
+      }
+
+      return mergeGuestActivity(target.phone, compression, onProgress);
+    },
+    [pendingUserForSync],
+  );
+
+  const declineSync = useCallback(() => {
+    const target = pendingUserForSync;
+    setSyncPromptVisible(false);
+    setPendingUserForSync(null);
+    if (target) setUser(target);
+  }, [pendingUserForSync]);
 
   const logout = useCallback(async () => {
     await AsyncStorage.removeItem(AUTH_KEY);
     setUser(null);
+    setSyncPromptVisible(false);
+    setPendingUserForSync(null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -122,13 +167,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [user]);
 
-  const tier: "guest" | "standard" | "pro" = user ? (user.tier ?? "standard") : "guest";
+  const tier: "guest" | "standard" | "pro" = (user ?? pendingUserForSync)
+    ? ((user ?? pendingUserForSync)!.tier ?? "standard")
+    : "guest";
 
   return (
     <AuthContext.Provider
       value={{
-        isLoggedIn: !!user,
-        user,
+        isLoggedIn: !!(user ?? pendingUserForSync),
+        user: user ?? pendingUserForSync,
         tier,
         loginModalVisible,
         openLoginModal: () => setLoginModalVisible(true),
@@ -136,6 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshProfile,
+        syncPromptVisible,
+        syncPhotoCount,
+        acceptSync,
+        declineSync,
       }}
     >
       {children}

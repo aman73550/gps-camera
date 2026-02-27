@@ -21,6 +21,8 @@ import {
   warnUser,
   banUser,
   unbanUser,
+  claimGuestUploads,
+  checkImageHashes,
   UploadRecord,
 } from "./supabase";
 
@@ -200,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "IMAGE_FORMAT_NOT_ALLOWED", allowedFormat });
       }
 
-      const { serialNumber, latitude, longitude, address, locationName, plusCode, altitude } =
+      const { serialNumber, latitude, longitude, address, locationName, plusCode, altitude, imageHash } =
         req.body;
       const reqExt = req as Request & {
         userPhone?: string | null;
@@ -225,6 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           file_path: req.file.filename,
           file_size_kb: Math.round(req.file.size / 1024),
           is_guest: isGuest,
+          image_hash: imageHash || null,
         });
       }
 
@@ -307,6 +310,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
+
+  app.post("/api/merge/check-hashes", async (req: Request, res: Response) => {
+    try {
+      const { hashes } = req.body as { hashes?: string[] };
+      if (!Array.isArray(hashes) || hashes.length === 0) {
+        return res.status(400).json({ error: "hashes array required" });
+      }
+      const matches = await checkImageHashes(hashes);
+      const map: Record<string, { file_path: string; serial_number: string }> = {};
+      for (const m of matches) {
+        if (m.hash && !map[m.hash]) {
+          map[m.hash] = { file_path: m.file_path, serial_number: m.serial_number };
+        }
+      }
+      return res.json({ results: map });
+    } catch (err) {
+      console.error("merge/check-hashes error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/merge/claim-guest", async (req: Request, res: Response) => {
+    try {
+      const { userPhone, serials } = req.body as { userPhone?: string; serials?: string[] };
+      if (!userPhone || !Array.isArray(serials) || serials.length === 0) {
+        return res.status(400).json({ error: "userPhone and serials required" });
+      }
+      const claimed = await claimGuestUploads(userPhone, serials);
+      await upsertProfile(userPhone);
+      console.log(`Merge claim: ${claimed}/${serials.length} records → ${userPhone}`);
+      return res.json({ success: true, claimed });
+    } catch (err) {
+      console.error("merge/claim-guest error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  app.post("/api/merge/link-upload", async (req: Request, res: Response) => {
+    try {
+      const { userPhone, serialNumber, filePath, imageHash, latitude, longitude, altitude, address, locationName, plusCode, fileSizeKb } =
+        req.body as {
+          userPhone?: string; serialNumber?: string; filePath?: string; imageHash?: string;
+          latitude?: number; longitude?: number; altitude?: number; address?: string;
+          locationName?: string; plusCode?: string; fileSizeKb?: number;
+        };
+      if (!userPhone || !serialNumber || !filePath) {
+        return res.status(400).json({ error: "userPhone, serialNumber, filePath required" });
+      }
+      await recordUpload({
+        user_phone: userPhone,
+        serial_number: serialNumber,
+        latitude: Number(latitude) || 0,
+        longitude: Number(longitude) || 0,
+        altitude: Number(altitude) || 0,
+        address: address || "",
+        location_name: locationName || "",
+        plus_code: plusCode || "",
+        file_path: filePath,
+        file_size_kb: Number(fileSizeKb) || 0,
+        is_guest: false,
+        image_hash: imageHash || null,
+      });
+      await upsertProfile(userPhone);
+      return res.json({ success: true });
+    } catch (err) {
+      console.error("merge/link-upload error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
 
   app.get("/api/config/limits", async (_req: Request, res: Response) => {
     const settings = await getAppSettings();

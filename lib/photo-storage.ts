@@ -20,6 +20,8 @@ export interface PhotoRecord {
   pendingUpload?: boolean;
   deletedAt?: number;
   serverDeleteRequested?: boolean;
+  imageHash?: string;
+  mergedToAccount?: string;
 }
 
 const PHOTOS_KEY = "@gps_camera_photos";
@@ -214,6 +216,47 @@ export async function setPendingUpload(id: string, pending: boolean): Promise<vo
       await _writeAll(all);
     }
   } catch {}
+}
+
+export async function setPhotoHash(id: string, hash: string): Promise<void> {
+  try {
+    const all = await _readAllRaw();
+    const idx = all.findIndex((p) => p.id === id);
+    if (idx !== -1) {
+      all[idx] = { ...all[idx], imageHash: hash };
+      await _writeAll(all);
+    }
+  } catch {}
+}
+
+export async function markPhotoMerged(id: string, ownerPhone: string): Promise<void> {
+  try {
+    const all = await _readAllRaw();
+    const idx = all.findIndex((p) => p.id === id);
+    if (idx !== -1) {
+      all[idx] = { ...all[idx], mergedToAccount: ownerPhone, uploadedAt: all[idx].uploadedAt ?? Date.now() };
+      await _writeAll(all);
+    }
+  } catch {}
+}
+
+export async function getUnmergedPhotos(): Promise<PhotoRecord[]> {
+  const all = await _readAllRaw();
+  return all.filter((p) => !p.deletedAt && !p.serverDeleteRequested && !p.mergedToAccount);
+}
+
+export async function computeImageHash(uri: string): Promise<string> {
+  try {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      base64,
+    );
+  } catch {
+    return "";
+  }
 }
 
 export async function getPhotosPage(

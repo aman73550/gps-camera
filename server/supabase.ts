@@ -103,6 +103,7 @@ export interface UploadRecord {
   file_path: string;
   file_size_kb: number;
   is_guest: boolean;
+  image_hash?: string | null;
 }
 
 export async function recordUpload(data: UploadRecord): Promise<void> {
@@ -115,6 +116,37 @@ export async function recordUploadBatch(records: UploadRecord[]): Promise<void> 
   if (!supabase || records.length === 0) return;
   const { error } = await supabase.from("uploads").insert(records);
   if (error) console.error("Supabase recordUploadBatch error:", error.message);
+}
+
+export async function claimGuestUploads(
+  userPhone: string,
+  serialNumbers: string[],
+): Promise<number> {
+  if (!supabase || serialNumbers.length === 0) return 0;
+  const { data, error } = await supabase
+    .from("uploads")
+    .update({ user_phone: userPhone, is_guest: false })
+    .in("serial_number", serialNumbers)
+    .is("user_phone", null)
+    .select("id");
+  if (error) { console.error("claimGuestUploads error:", error.message); return 0; }
+  return data?.length ?? 0;
+}
+
+export async function checkImageHashes(
+  hashes: string[],
+): Promise<{ hash: string; file_path: string; serial_number: string }[]> {
+  if (!supabase || hashes.length === 0) return [];
+  const { data, error } = await supabase
+    .from("uploads")
+    .select("image_hash, file_path, serial_number")
+    .in("image_hash", hashes);
+  if (error) { console.error("checkImageHashes error:", error.message); return []; }
+  return (data ?? []).map((r) => ({
+    hash: r.image_hash as string,
+    file_path: r.file_path as string,
+    serial_number: r.serial_number as string,
+  }));
 }
 
 export async function upsertProfile(phone: string): Promise<void> {

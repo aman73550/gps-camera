@@ -61,6 +61,10 @@ ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS flagged     BOOLEAN NOT NULL
 ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS flag_reason TEXT;
 CREATE INDEX IF NOT EXISTS idx_uploads_flagged ON public.uploads(flagged) WHERE flagged = TRUE;
 
+-- Image hash for deduplication during guest-to-account merge (safe to re-run)
+ALTER TABLE public.uploads ADD COLUMN IF NOT EXISTS image_hash TEXT;
+CREATE INDEX IF NOT EXISTS idx_uploads_image_hash ON public.uploads(image_hash) WHERE image_hash IS NOT NULL;
+
 ALTER TABLE public.uploads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all" ON public.uploads;
 CREATE POLICY "anon_all" ON public.uploads FOR ALL USING (true) WITH CHECK (true);
