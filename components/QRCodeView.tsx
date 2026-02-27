@@ -7,6 +7,7 @@ interface QRCodeViewProps {
   size?: number;
   backgroundColor?: string;
   color?: string;
+  correctionLevel?: "L" | "M" | "Q" | "H";
 }
 
 export function QRCodeView({
@@ -14,6 +15,7 @@ export function QRCodeView({
   size = 80,
   backgroundColor = "#FFFFFF",
   color = "#000000",
+  correctionLevel = "L",
 }: QRCodeViewProps) {
   return (
     <View
@@ -25,7 +27,13 @@ export function QRCodeView({
         justifyContent: "center",
       }}
     >
-      <QRCode value={value} size={size} backgroundColor={backgroundColor} color={color} />
+      <QRCode
+        value={value}
+        size={size}
+        backgroundColor={backgroundColor}
+        color={color}
+        ecl={correctionLevel}
+      />
     </View>
   );
 }

@@ -58,9 +58,10 @@ export function PhotoOverlay({
           <View style={styles.qrWrapper}>
             <QRCodeView
               value={getVerifyUrl(serialNumber) || "GPS-CAMERA"}
-              size={96}
-              backgroundColor="#1a1a1a"
-              color="#FFFFFF"
+              size={120}
+              backgroundColor="#FFFFFF"
+              color="#000000"
+              correctionLevel="L"
             />
           </View>
           <Text style={styles.serialText} numberOfLines={1}>
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     gap: 11,
   },
   leftSection: {
-    width: 118,
+    width: 142,
     alignItems: "center",
     justifyContent: "center",
     gap: 5,

@@ -126,9 +126,12 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function verifyPage({ upload, error }: { upload?: Record<string, unknown>; error?: string }): string {
+function verifyPage({ upload, error, host }: { upload?: Record<string, unknown>; error?: string; host?: string }): string {
   const title = upload ? `Verified Photo · ${upload["serial_number"]}` : "Verified GPS Camera";
-  const imgSrc = upload ? `/api/public/image/${encodeURIComponent(upload["serial_number"] as string)}` : null;
+  const serial = upload?.["serial_number"] as string | undefined;
+  const imgSrc = serial
+    ? (host ? `https://${host}/api/public/image/${encodeURIComponent(serial)}` : `/api/public/image/${encodeURIComponent(serial)}`)
+    : null;
   const date = upload?.["created_at"] ? new Date(upload["created_at"] as string).toLocaleString("en-IN", {
     weekday: "short", year: "numeric", month: "long", day: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
@@ -204,7 +207,11 @@ ${error ? `
   ${(upload?.["flagged"] as boolean) ? `<div class="flagged-banner">🚩 <span>This image has been flagged by a moderator${upload["flag_reason"] ? `: ${upload["flag_reason"]}` : ""}.</span></div>` : ""}
   ${imgSrc && !(upload?.["flagged"] as boolean) ? `
   <div class="photo-wrap">
-    <img src="${imgSrc}" alt="Verified Photo" loading="lazy" />
+    <img id="vphoto" src="${imgSrc}" alt="Verified Photo" loading="eager"
+      onerror="this.onerror=null;document.getElementById('img-err').style.display='block';this.style.display='none'" />
+    <div id="img-err" style="display:none;padding:24px;text-align:center;color:#888;font-size:13px">
+      ⚠️ Image failed to load. <a href="${imgSrc}" style="color:#60a5fa" target="_blank">Open directly</a>
+    </div>
     <div class="verified-strip">
       <div class="shield">🛡️</div>
       <div class="verified-text">GPS-Verified Photo · Tamper-Proof Record</div>
@@ -249,13 +256,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const filePath = path.join(uploadsDir, filename);
     if (!fs.existsSync(filePath)) return res.status(404).send("Image file not found");
     res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Access-Control-Allow-Origin", "*");
     return res.sendFile(filePath);
   });
 
   // ── Public: verification page (scanned from QR on photo) ──
   app.get("/v/:serial", async (req: Request, res: Response) => {
+    const reqHost = req.get("host") || "";
     if (!supabase) {
-      return res.send(verifyPage({ error: "Database unavailable" }));
+      return res.send(verifyPage({ error: "Database unavailable", host: reqHost }));
     }
     const serial = req.params["serial"] as string;
     const { data } = await supabase
@@ -263,8 +272,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .select("serial_number, latitude, longitude, altitude, address, location_name, plus_code, file_size_kb, is_guest, created_at, flagged, flag_reason")
       .eq("serial_number", serial)
       .single();
-    if (!data) return res.status(404).send(verifyPage({ error: "No record found for this serial number." }));
-    return res.send(verifyPage({ upload: data }));
+    if (!data) return res.status(404).send(verifyPage({ error: "No record found for this serial number.", host: reqHost }));
+    return res.send(verifyPage({ upload: data, host: reqHost }));
   });
 
   app.post("/api/admin/login", (req: Request, res: Response) => {
