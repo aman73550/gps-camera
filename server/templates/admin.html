@@ -1170,9 +1170,9 @@ async function loadUploads() {
     const phone = u.user_phone || '';
     const serial = u.serial_number || '';
     const fn = u.file_path ? u.file_path.split('/').pop() : null;
-    const hasImg = !!fn;
-    const thumbUrl = fn ? imgUrl(fn, true) : null;
-    const fullUrl  = fn ? imgUrl(fn, false) : null;
+    const hasImg = !!(u.thumb_url || u.image_url || fn);
+    const thumbUrl = u.thumb_url || u.image_url || (fn ? imgUrl(fn, true) : null);
+    const fullUrl  = u.image_url || (fn ? imgUrl(fn, false) : null);
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
     const safeSerial = encodeURIComponent(serial);
     const safePhone  = encodeURIComponent(phone);

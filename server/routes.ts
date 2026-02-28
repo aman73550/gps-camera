@@ -124,12 +124,9 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function verifyPage({ upload, error, host }: { upload?: Record<string, unknown>; error?: string; host?: string }): string {
+function verifyPage({ upload, error, imageUrl }: { upload?: Record<string, unknown>; error?: string; host?: string; imageUrl?: string | null }): string {
   const title = upload ? `Verified Photo · ${upload["serial_number"]}` : "Verified GPS Camera";
-  const serial = upload?.["serial_number"] as string | undefined;
-  const imgSrc = serial
-    ? (host ? `https://${host}/api/public/image/${encodeURIComponent(serial)}` : `/api/public/image/${encodeURIComponent(serial)}`)
-    : null;
+  const imgSrc = imageUrl || null;
   const date = upload?.["created_at"] ? new Date(upload["created_at"] as string).toLocaleString("en-IN", {
     weekday: "short", year: "numeric", month: "long", day: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
@@ -267,18 +264,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Public: verification page (scanned from QR on photo) ──
   app.get("/v/:serial", async (req: Request, res: Response) => {
-    const reqHost = req.get("host") || "";
     if (!supabase) {
-      return res.send(verifyPage({ error: "Database unavailable", host: reqHost }));
+      return res.send(verifyPage({ error: "Database unavailable" }));
     }
     const serial = req.params["serial"] as string;
     const { data } = await supabase
       .from("uploads")
-      .select("serial_number, latitude, longitude, altitude, address, location_name, plus_code, file_size_kb, is_guest, created_at, flagged, flag_reason")
+      .select("serial_number, latitude, longitude, altitude, address, location_name, plus_code, file_size_kb, is_guest, created_at, flagged, flag_reason, file_path")
       .eq("serial_number", serial)
       .single();
-    if (!data) return res.status(404).send(verifyPage({ error: "No record found for this serial number.", host: reqHost }));
-    return res.send(verifyPage({ upload: data, host: reqHost }));
+    if (!data) return res.status(404).send(verifyPage({ error: "No record found for this serial number." }));
+    const filename = data.file_path ? path.basename(data.file_path as string) : null;
+    const imageUrl = filename ? getStoragePublicUrl(filename) : null;
+    return res.send(verifyPage({ upload: data, imageUrl }));
   });
 
   app.post("/api/admin/login", (req: Request, res: Response) => {
@@ -734,10 +732,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (profiles || []).forEach(p => { profileMap[p.phone] = p; });
       }
 
-      const data = (uploads || []).map(u => ({
-        ...u,
-        user_profile: u.user_phone ? (profileMap[u.user_phone] || null) : null,
-      }));
+      const data = (uploads || []).map(u => {
+        const fn = u.file_path ? path.basename(u.file_path as string) : null;
+        const image_url = fn ? getStoragePublicUrl(fn) : null;
+        const thumb_url = fn ? getStorageThumbUrl(fn) : null;
+        return {
+          ...u,
+          user_profile: u.user_phone ? (profileMap[u.user_phone] || null) : null,
+          image_url,
+          thumb_url,
+        };
+      });
 
       const { count: flaggedCount } = await supabase.from("uploads").select("*", { count: "exact", head: true }).eq("flagged", true);
       const { count: bannedCount } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("banned", true);
