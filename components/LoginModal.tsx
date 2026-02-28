@@ -13,8 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { makeRedirectUri } from "expo-auth-session";
+import { Image } from "expo-image";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
+
+const APP_ICON = require("@/assets/images/icon.png");
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -151,9 +154,7 @@ export function LoginModal({ visible, onClose }: Props) {
 
             <>
                 <View style={styles.iconWrap}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="shield-checkmark-outline" size={36} color={Colors.light.primary} />
-                  </View>
+                  <Image source={APP_ICON} style={styles.iconImage} contentFit="contain" />
                 </View>
 
                 <Text style={styles.title}>Sign In</Text>
@@ -317,12 +318,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surfaceVariant,
     justifyContent: "center", alignItems: "center",
   },
-  iconWrap: { alignItems: "center", marginTop: 8, marginBottom: 16 },
-  iconCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.light.primaryContainer,
-    justifyContent: "center", alignItems: "center",
-  },
+  iconWrap: { alignItems: "center", marginTop: 4, marginBottom: 12 },
+  iconImage: { width: 80, height: 80, borderRadius: 20 },
   title: {
     fontSize: 22, fontFamily: "Inter_700Bold",
     color: Colors.light.onSurface, textAlign: "center", marginBottom: 4,

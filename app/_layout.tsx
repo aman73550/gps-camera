@@ -21,7 +21,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Colors } from "@/constants/colors";
+import { Image } from "expo-image";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { PhotoProvider } from "@/contexts/PhotoContext";
@@ -31,6 +31,7 @@ import { checkRequiredVersion } from "@/lib/supabase";
 import { cleanExpiredTrash } from "@/lib/photo-storage";
 import Colors from "@/constants/colors";
 
+const APP_ICON = require("@/assets/images/icon.png");
 const APP_VERSION = "1.0.0";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.gpscamera";
 
@@ -60,7 +61,7 @@ function HardBlockScreen() {
     <View style={blockStyles.root}>
       <View style={blockStyles.card}>
         <View style={blockStyles.shieldWrap}>
-          <Ionicons name="shield-checkmark" size={64} color={Colors.light.primary} />
+          <Image source={APP_ICON} style={blockStyles.appIconImg} contentFit="contain" />
         </View>
         <Text style={blockStyles.title}>Update Required</Text>
         <Text style={blockStyles.body}>
@@ -199,11 +200,12 @@ const blockStyles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 12,
   },
+  appIconImg: { width: 80, height: 80, borderRadius: 18 },
   shieldWrap: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: Colors.light.primaryContainer,
+    borderRadius: 24,
+    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
