@@ -52,11 +52,18 @@ export function LoginModal({ visible, onClose }: Props) {
 
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const redirectUri = makeRedirectUri({ useProxy: true });
+  // Derive the reversed-client-ID scheme that Google uses for Android OAuth callbacks.
+  // e.g. "389461645...apps.googleusercontent.com" → "com.googleusercontent.apps.389461645..."
+  const clientIdPrefix = (googleClientId ?? "").replace(".apps.googleusercontent.com", "");
+  const reversedClientId = `com.googleusercontent.apps.${clientIdPrefix}`;
+  const nativeRedirectUri = `${reversedClientId}:/oauth2redirect`;
+
+  // makeRedirectUri WITHOUT useProxy — the deprecated auth.expo.io proxy is shut down.
+  // On Android EAS builds this returns the native scheme URI automatically.
+  const redirectUri = makeRedirectUri({ native: nativeRedirectUri });
 
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: googleClientId,
-    iosClientId: googleClientId,
     androidClientId: googleClientId,
     redirectUri,
   });
@@ -65,8 +72,18 @@ export function LoginModal({ visible, onClose }: Props) {
     if (googleResponse?.type === "success") {
       handleGoogleSuccess(googleResponse.authentication?.accessToken ?? "");
     } else if (googleResponse?.type === "error") {
-      const desc = (googleResponse as any)?.error?.description ?? (googleResponse as any)?.error ?? "";
-      setError(`Google sign-in failed. ${desc ? `Error: ${desc}` : `Add this URI in Google Cloud Console → Authorized redirect URIs:\n${redirectUri}`}`);
+      const errObj = googleResponse as any;
+      const desc = errObj?.error?.description ?? errObj?.params?.error_description ?? "";
+      const code = errObj?.error?.code ?? errObj?.params?.error ?? "";
+      if (code === "access_denied") {
+        setError("Sign-in cancelled.");
+      } else if (code === "redirect_uri_mismatch" || desc.includes("redirect")) {
+        setError(
+          `Google Console setup needed.\n\nIn Google Cloud Console → Credentials → your OAuth client → add this Authorized redirect URI:\n\n${nativeRedirectUri}`
+        );
+      } else {
+        setError(`Google sign-in failed.${desc ? ` ${desc}` : ""} (${code || "unknown"})`);
+      }
     }
   }, [googleResponse]);
 
