@@ -30,6 +30,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { captureRef } from "react-native-view-shot";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
+import { showSignOutAlert } from "@/lib/signOutAlert";
 import {
   generateSerialNumber,
   generateId,
@@ -505,9 +506,13 @@ export default function CameraTab() {
                   if (isLoggedIn) {
                     Alert.alert(
                       `Signed in: ${user?.phone}`,
-                      "You have unlimited uploads.",
+                      user?.tier === "pro" ? "Pro — unlimited uploads." : "Standard account.",
                       [
-                        { text: "Sign Out", style: "destructive", onPress: logout },
+                        {
+                          text: "Sign Out",
+                          style: "destructive",
+                          onPress: () => showSignOutAlert(logout, () => router.navigate("/(tabs)/files")),
+                        },
                         { text: "OK", style: "cancel" },
                       ],
                     );

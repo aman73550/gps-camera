@@ -17,6 +17,7 @@ import Colors from "@/constants/colors";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginModal } from "@/components/LoginModal";
+import { showSignOutAlert } from "@/lib/signOutAlert";
 
 const APP_VERSION = "1.0.0";
 
@@ -147,7 +148,11 @@ export default function SettingsTab() {
         `Signed in as ${user?.phone}`,
         user?.tier === "pro" ? "Pro account — unlimited uploads." : "Standard account.",
         [
-          { text: "Sign Out", style: "destructive", onPress: logout },
+          {
+            text: "Sign Out",
+            style: "destructive",
+            onPress: () => showSignOutAlert(logout, () => router.navigate("/(tabs)/files")),
+          },
           { text: "OK", style: "cancel" },
         ],
       );
