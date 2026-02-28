@@ -207,56 +207,28 @@ export default function PhotoDetailScreen() {
     );
   };
 
-  const openInMaps = (label: string, googleUrl: string, appleUrl: string) => {
+  const openInMaps = (label: string, googleUrl: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (Platform.OS === "ios") {
-      Alert.alert(`Open ${label} in Maps`, "Choose your preferred maps app", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Google Maps",
-          onPress: () => Linking.openURL(googleUrl).catch(() =>
-            Linking.openURL(googleUrl.replace("comgooglemaps://", "https://maps.google.com/"))
-          ),
-        },
-        {
-          text: "Apple Maps",
-          onPress: () => Linking.openURL(appleUrl),
-        },
-      ]);
-    } else {
-      Alert.alert(`Open in Google Maps`, `Open ${label} in Google Maps?`, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Open Maps", onPress: () => Linking.openURL(googleUrl) },
-      ]);
-    }
+    Alert.alert(`Open in Google Maps`, `Open ${label} in Google Maps?`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Open Maps", onPress: () => Linking.openURL(googleUrl).catch(() => {}) },
+    ]);
   };
 
   const handleOpenLocation = () => {
     const q = encodeURIComponent(photo.address || `${photo.latitude},${photo.longitude}`);
-    openInMaps(
-      "Location",
-      `https://maps.google.com/?q=${q}`,
-      `maps://maps.apple.com/?q=${q}`,
-    );
+    openInMaps("Location", `https://maps.google.com/?q=${q}`);
   };
 
   const handleOpenCoordinates = () => {
     const lat = photo.latitude.toFixed(6);
     const lng = photo.longitude.toFixed(6);
-    openInMaps(
-      "GPS Coordinates",
-      `https://maps.google.com/?q=${lat},${lng}`,
-      `maps://maps.apple.com/?ll=${lat},${lng}`,
-    );
+    openInMaps("GPS Coordinates", `https://maps.google.com/?q=${lat},${lng}`);
   };
 
   const handleOpenPlusCode = () => {
     const q = encodeURIComponent(photo.plusCode ?? "");
-    openInMaps(
-      "Plus Code",
-      `https://maps.google.com/?q=${q}`,
-      `maps://maps.apple.com/?q=${q}`,
-    );
+    openInMaps("Plus Code", `https://maps.google.com/?q=${q}`);
   };
 
   return (

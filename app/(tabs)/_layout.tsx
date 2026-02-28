@@ -1,5 +1,4 @@
 import { Tabs } from "expo-router";
-import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, useColorScheme, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -10,7 +9,6 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isWeb = Platform.OS === "web";
-  const isIOS = Platform.OS === "ios";
   const { pendingCount } = usePhotos();
 
   return (
@@ -24,32 +22,22 @@ export default function TabLayout() {
           fontSize: 11,
         },
         tabBarStyle: {
-          position: "absolute",
-          backgroundColor: isIOS
-            ? "transparent"
-            : isDark
-              ? "#000"
-              : "#fff",
-          borderTopWidth: isWeb ? 1 : 0,
+          backgroundColor: isDark ? "#121212" : "#ffffff",
+          borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: isDark ? "#333" : Colors.light.outline,
-          elevation: 0,
+          elevation: 8,
           ...(isWeb ? { height: 84 } : {}),
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: isDark ? "#000" : "#fff" },
-              ]}
-            />
-          ) : null,
+        tabBarBackground: isWeb
+          ? () => (
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: isDark ? "#121212" : "#ffffff" },
+                ]}
+              />
+            )
+          : undefined,
       }}
     >
       <Tabs.Screen

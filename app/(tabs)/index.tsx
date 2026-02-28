@@ -472,7 +472,7 @@ export default function CameraTab() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#000" }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="height"
     >
       <FadeInView style={styles.container}>
 

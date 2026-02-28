@@ -31,7 +31,6 @@ import { cleanExpiredTrash } from "@/lib/photo-storage";
 import Colors from "@/constants/colors";
 
 const APP_VERSION = "1.0.0";
-const APP_STORE_URL = "https://apps.apple.com/app/gps-camera";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.gpscamera";
 
 type BootState = "checking" | "blocked" | "ok";
@@ -53,8 +52,7 @@ function HardBlockScreen() {
   }, []);
 
   const openStore = () => {
-    const url = Platform.OS === "android" ? PLAY_STORE_URL : APP_STORE_URL;
-    Linking.openURL(url).catch(() => {});
+    Linking.openURL(PLAY_STORE_URL).catch(() => {});
   };
 
   return (

@@ -65,7 +65,6 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-apple-authentication",
       [
         "expo-media-library",
         {

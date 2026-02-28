@@ -7,13 +7,11 @@ import {
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { makeRedirectUri } from "expo-auth-session";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
@@ -91,37 +89,6 @@ export function LoginModal({ visible, onClose }: Props) {
     }
   };
 
-  const handleAppleLogin = async () => {
-    setError("");
-    setIsLoading(true);
-    try {
-      const available = await AppleAuthentication.isAvailableAsync();
-      if (!available) {
-        setError("Apple Sign-In is only available on a published iOS app, not in Expo Go.");
-        setIsLoading(false);
-        return;
-      }
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      const identifier = credential.email ?? `apple_${credential.user}`;
-      const name = credential.fullName?.givenName
-        ? `${credential.fullName.givenName} ${credential.fullName.familyName ?? ""}`.trim()
-        : undefined;
-      await login(identifier, name);
-      onClose();
-    } catch (e: any) {
-      if (e?.code !== "ERR_REQUEST_CANCELED") {
-        setError(e instanceof Error ? e.message : "Apple sign-in failed.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handlePhoneLogin = async () => {
     if (phone.trim().length < 5) return;
     setError("");
@@ -155,7 +122,7 @@ export function LoginModal({ visible, onClose }: Props) {
     >
       <View style={styles.backdrop}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior="height"
           style={styles.kav}
         >
           <View style={styles.sheet}>
@@ -204,25 +171,6 @@ export function LoginModal({ visible, onClose }: Props) {
                     <Text style={styles.socialBtnText}>Continue with Google</Text>
                   </Pressable>
 
-                  {/* Apple — iOS only */}
-                  {Platform.OS === "ios" && (
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.socialBtn,
-                        styles.appleBtn,
-                        { opacity: (pressed || isLoading) ? 0.75 : 1 },
-                      ]}
-                      onPress={handleAppleLogin}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator size="small" color="#FFF" />
-                      ) : (
-                        <Ionicons name="logo-apple" size={20} color="#FFF" />
-                      )}
-                      <Text style={[styles.socialBtnText, { color: "#FFF" }]}>Continue with Apple</Text>
-                    </Pressable>
-                  )}
                 </View>
 
                 {/* Divider */}
@@ -347,7 +295,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 24,
-    paddingBottom: Platform.OS === "ios" ? 40 : 28,
+    paddingBottom: 28,
     paddingTop: 12,
   },
   handle: {
@@ -391,7 +339,6 @@ const styles = StyleSheet.create({
     borderRadius: 14, paddingVertical: 14,
   },
   socialBtnDisabled: { backgroundColor: "#F5F5F5", borderColor: "#E0E0E0" },
-  appleBtn: { backgroundColor: "#000", borderColor: "#000" },
   googleG: {
     fontSize: 18, fontFamily: "Inter_700Bold",
     color: "#4285F4", lineHeight: 22,
