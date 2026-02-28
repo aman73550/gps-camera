@@ -101,9 +101,10 @@ function SettingsRow({
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, { opacity: pressed && onPress ? 0.7 : 1 }]}
+      style={styles.row}
       onPress={onPress}
       disabled={!onPress}
+      android_ripple={onPress ? { color: destructive ? Colors.light.rippleError : Colors.light.rippleNeutral } : undefined}
     >
       <View style={[styles.rowIcon, destructive && styles.rowIconDestructive]}>
         <Ionicons name={icon} size={18} color={destructive ? "#FF453A" : Colors.light.primary} />
@@ -165,8 +166,9 @@ export default function SettingsTab() {
         <SectionHeader title="Account" />
         <View style={styles.card}>
           <Pressable
-            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+            style={styles.row}
             onPress={handleAccountPress}
+            android_ripple={{ color: Colors.light.rippleNeutral }}
           >
             <View style={[styles.rowIcon, isLoggedIn && styles.rowIconAccount]}>
               {isLoggedIn ? (
@@ -243,7 +245,7 @@ export default function SettingsTab() {
         <View style={[styles.termsContainer, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
           <View style={styles.termsHeader}>
             <Text style={styles.termsHeaderTitle}>Terms of Service</Text>
-            <Pressable style={({ pressed }) => [styles.termsCloseBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => setShowTerms(false)}>
+            <Pressable style={styles.termsCloseBtn} onPress={() => setShowTerms(false)} android_ripple={{ color: Colors.light.rippleNeutral, borderless: true }}>
               <Ionicons name="close" size={22} color={Colors.light.onSurface} />
             </Pressable>
           </View>
@@ -263,7 +265,7 @@ export default function SettingsTab() {
         <View style={[styles.termsContainer, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
           <View style={styles.termsHeader}>
             <Text style={styles.termsHeaderTitle}>Privacy Policy</Text>
-            <Pressable style={({ pressed }) => [styles.termsCloseBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => setShowPrivacy(false)}>
+            <Pressable style={styles.termsCloseBtn} onPress={() => setShowPrivacy(false)} android_ripple={{ color: Colors.light.rippleNeutral, borderless: true }}>
               <Ionicons name="close" size={22} color={Colors.light.onSurface} />
             </Pressable>
           </View>

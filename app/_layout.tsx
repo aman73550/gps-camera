@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Colors } from "@/constants/colors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { PhotoProvider } from "@/contexts/PhotoContext";
@@ -67,8 +68,9 @@ function HardBlockScreen() {
         </Text>
         <Text style={blockStyles.versionChip}>Your version: {APP_VERSION}</Text>
         <Pressable
-          style={({ pressed }) => [blockStyles.updateBtn, { opacity: pressed ? 0.85 : 1 }]}
+          style={blockStyles.updateBtn}
           onPress={openStore}
+          android_ripple={{ color: Colors.light.rippleOnPrimary }}
         >
           <Ionicons name="download-outline" size={18} color="#FFF" />
           <Text style={blockStyles.updateBtnText}>Update Now</Text>
@@ -242,6 +244,7 @@ const blockStyles = StyleSheet.create({
     paddingHorizontal: 40,
     width: "100%",
     marginBottom: 16,
+    overflow: "hidden",
   },
   updateBtnText: {
     color: "#FFF",

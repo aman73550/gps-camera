@@ -102,19 +102,18 @@ export function GuestLimitModal({ visible, type, used, max, dailyLimit, monthlyL
           )}
 
           <Pressable
-            style={({ pressed }) => [
-              styles.loginBtn,
-              { opacity: pressed ? 0.82 : 1, backgroundColor: content.iconColor },
-            ]}
+            style={[styles.loginBtn, { backgroundColor: content.iconColor }]}
             onPress={onLogin}
+            android_ripple={{ color: Colors.light.rippleOnPrimary }}
           >
             <Ionicons name={content.btnIcon} size={20} color="#FFF" />
             <Text style={styles.loginBtnText}>{content.btnText}</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.laterBtn, { opacity: pressed ? 0.6 : 1 }]}
+            style={styles.laterBtn}
             onPress={onDismiss}
+            android_ripple={{ color: Colors.light.rippleNeutral }}
           >
             <Text style={styles.laterText}>Maybe Later</Text>
           </Pressable>
@@ -206,7 +205,7 @@ const styles = StyleSheet.create({
     color: Colors.light.textTertiary,
   },
   loginBtn: {
-    borderRadius: 16,
+    borderRadius: 20,
     paddingVertical: 15,
     paddingHorizontal: 24,
     flexDirection: "row",

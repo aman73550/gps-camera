@@ -376,13 +376,13 @@ export default function FilesTab() {
 
       {isSelectMode ? (
         <View style={styles.selectHeader}>
-          <Pressable style={({ pressed }) => [styles.selectHeaderBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={exitSelectMode}>
+          <Pressable style={styles.selectHeaderBtn} onPress={exitSelectMode} android_ripple={{ color: Colors.light.ripplePrimary, borderless: true }}>
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Text style={styles.selectCountText}>
             {selectedIds.size} selected
           </Text>
-          <Pressable style={({ pressed }) => [styles.selectHeaderBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={handleSelectAll}>
+          <Pressable style={styles.selectHeaderBtn} onPress={handleSelectAll} android_ripple={{ color: Colors.light.ripplePrimary, borderless: true }}>
             <Text style={styles.selectAllText}>
               {selectedIds.size === filteredPhotos.length ? "None" : "All"}
             </Text>
@@ -402,9 +402,10 @@ export default function FilesTab() {
           <View style={styles.headerActions}>
           {/* Settings button */}
           <Pressable
-            style={({ pressed }) => [styles.trashBtn, { opacity: pressed ? 0.7 : 1 }]}
+            style={styles.trashBtn}
             onPress={() => router.push("/settings")}
             testID="settings-button"
+            android_ripple={{ color: Colors.light.rippleNeutral, borderless: true }}
           >
             <Ionicons name="settings-outline" size={20} color={Colors.light.textSecondary} />
           </Pressable>
@@ -426,7 +427,7 @@ export default function FilesTab() {
               testID="search-input"
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
+              <Pressable onPress={() => setSearchQuery("")} android_ripple={{ color: Colors.light.rippleNeutral, borderless: true }}>
                 <Ionicons name="close-circle" size={18} color={Colors.light.textTertiary} />
               </Pressable>
             )}
@@ -511,27 +512,30 @@ export default function FilesTab() {
       {isSelectMode && (
         <View style={[styles.batchActionBar, { bottom: tabBarHeight }]}>
           <Pressable
-            style={({ pressed }) => [styles.batchBtn, { opacity: (pressed || isBatchProcessing || selectedIds.size === 0) ? 0.5 : 1 }]}
+            style={[styles.batchBtn, (isBatchProcessing || selectedIds.size === 0) && { opacity: 0.5 }]}
             onPress={handleBatchShare}
             disabled={isBatchProcessing || selectedIds.size === 0}
+            android_ripple={{ color: Colors.light.rippleOnPrimary }}
           >
             <Ionicons name="share-outline" size={22} color="#FFF" />
             <Text style={styles.batchBtnText}>Share</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.batchBtn, { opacity: (pressed || isBatchProcessing || selectedIds.size === 0) ? 0.5 : 1 }]}
+            style={[styles.batchBtn, (isBatchProcessing || selectedIds.size === 0) && { opacity: 0.5 }]}
             onPress={handleBatchSave}
             disabled={isBatchProcessing || selectedIds.size === 0}
+            android_ripple={{ color: Colors.light.rippleOnPrimary }}
           >
             <Ionicons name="download-outline" size={22} color="#FFF" />
             <Text style={styles.batchBtnText}>Save</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.batchBtn, styles.batchBtnDelete, { opacity: (pressed || isBatchProcessing || selectedIds.size === 0) ? 0.5 : 1 }]}
+            style={[styles.batchBtn, styles.batchBtnDelete, (isBatchProcessing || selectedIds.size === 0) && { opacity: 0.5 }]}
             onPress={handleBatchDelete}
             disabled={isBatchProcessing || selectedIds.size === 0}
+            android_ripple={{ color: Colors.light.rippleError }}
           >
             <Ionicons name="trash-outline" size={22} color="#FF453A" />
             <Text style={[styles.batchBtnText, { color: "#FF453A" }]}>Delete</Text>
@@ -542,18 +546,12 @@ export default function FilesTab() {
       {/* QR Scan FAB — bottom right, above tab bar */}
       {!isSelectMode && !isScanning && (
         <Pressable
-          style={({ pressed }) => [
-            styles.qrFab,
-            {
-              bottom: Platform.OS === "web"
-                ? 84 + 20
-                : insets.bottom + 50 + 20,
-              opacity: pressed ? 0.85 : 1,
-              transform: [{ scale: pressed ? 0.94 : 1 }],
-            },
-          ]}
+          style={[styles.qrFab, {
+            bottom: Platform.OS === "web" ? 84 + 20 : insets.bottom + 50 + 20,
+          }]}
           onPress={handleScan}
           testID="qr-fab"
+          android_ripple={{ color: Colors.light.rippleOnPrimary, borderless: false }}
         >
           <MaterialCommunityIcons name="qrcode-scan" size={26} color="#FFF" />
         </Pressable>
@@ -583,7 +581,7 @@ export default function FilesTab() {
         <Pressable style={styles.scannerOverlay} onPress={() => setIsScanning(false)}>
           <CameraView style={StyleSheet.absoluteFill} barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={handleBarCodeScanned} />
           <Pressable style={[styles.scannerTopBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]} onPress={(e) => e.stopPropagation()}>
-            <Pressable style={({ pressed }) => [styles.scannerCloseBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => setIsScanning(false)}>
+            <Pressable style={styles.scannerCloseBtn} onPress={() => setIsScanning(false)} android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: true }}>
               <Ionicons name="close" size={28} color="#FFF" />
             </Pressable>
             <Text style={styles.scannerTitle}>Scan QR Code</Text>
@@ -672,6 +670,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 8,
     zIndex: 99,
+    overflow: "hidden",
   },
   selectHeader: {
     flexDirection: "row",
@@ -817,10 +816,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: Colors.light.primary,
     gap: 4,
     minWidth: 72,
+    overflow: "hidden",
   },
   batchBtnDelete: { backgroundColor: "rgba(255,69,58,0.1)" },
   batchBtnText: { color: "#FFF", fontSize: 11, fontFamily: "Inter_600SemiBold" },

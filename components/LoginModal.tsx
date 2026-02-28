@@ -128,7 +128,7 @@ export function LoginModal({ visible, onClose }: Props) {
           <View style={styles.sheet}>
             <View style={styles.handle} />
 
-            <Pressable style={styles.closeBtn} onPress={handleClose} hitSlop={8}>
+            <Pressable style={styles.closeBtn} onPress={handleClose} hitSlop={8} android_ripple={{ color: Colors.light.rippleNeutral, borderless: true }}>
               <Ionicons name="close" size={20} color={Colors.light.textSecondary} />
             </Pressable>
 
@@ -155,13 +155,10 @@ export function LoginModal({ visible, onClose }: Props) {
                 <View style={styles.socialSection}>
                   {/* Google */}
                   <Pressable
-                    style={({ pressed }) => [
-                      styles.socialBtn,
-                      !googleClientId && styles.socialBtnDisabled,
-                      { opacity: (pressed || isLoading || !googleClientId) ? 0.6 : 1 },
-                    ]}
+                    style={[styles.socialBtn, !googleClientId && styles.socialBtnDisabled]}
                     onPress={() => promptGoogleAsync()}
                     disabled={isLoading || !googleClientId}
+                    android_ripple={{ color: Colors.light.rippleNeutral }}
                   >
                     {isLoading ? (
                       <ActivityIndicator size="small" color="#444" />
@@ -183,8 +180,9 @@ export function LoginModal({ visible, onClose }: Props) {
                 {/* Phone number toggle */}
                 {!showPhoneSection ? (
                   <Pressable
-                    style={({ pressed }) => [styles.phoneToggleBtn, { opacity: pressed ? 0.7 : 1 }]}
+                    style={styles.phoneToggleBtn}
                     onPress={() => { setShowPhoneSection(true); setTimeout(() => inputRef.current?.focus(), 100); }}
+                    android_ripple={{ color: Colors.light.ripplePrimary }}
                   >
                     <Ionicons name="call-outline" size={17} color={Colors.light.primary} />
                     <Text style={styles.phoneToggleText}>Continue with Phone Number</Text>
@@ -193,12 +191,9 @@ export function LoginModal({ visible, onClose }: Props) {
                   <>
                     <View style={styles.phoneRow}>
                       <Pressable
-                        style={({ pressed }) => [
-                          styles.countryBtn,
-                          showPicker && styles.countryBtnActive,
-                          { opacity: pressed ? 0.75 : 1 },
-                        ]}
+                        style={[styles.countryBtn, showPicker && styles.countryBtnActive]}
                         onPress={() => setShowPicker((p) => !p)}
+                        android_ripple={{ color: Colors.light.rippleNeutral }}
                       >
                         <Text style={styles.flagText}>{countryCode.flag}</Text>
                         <Text style={styles.codeText}>{countryCode.code}</Text>
@@ -228,12 +223,9 @@ export function LoginModal({ visible, onClose }: Props) {
                         {COUNTRY_CODES.map((cc) => (
                           <Pressable
                             key={cc.code + cc.label}
-                            style={({ pressed }) => [
-                              styles.pickerItem,
-                              cc.code === countryCode.code && styles.pickerItemActive,
-                              { opacity: pressed ? 0.7 : 1 },
-                            ]}
+                            style={[styles.pickerItem, cc.code === countryCode.code && styles.pickerItemActive]}
                             onPress={() => { setCountryCode(cc); setShowPicker(false); inputRef.current?.focus(); }}
+                            android_ripple={{ color: Colors.light.rippleNeutral }}
                           >
                             <Text style={styles.flagText}>{cc.flag}</Text>
                             <Text style={styles.pickerLabel}>{cc.label}</Text>
@@ -244,12 +236,10 @@ export function LoginModal({ visible, onClose }: Props) {
                     )}
 
                     <Pressable
-                      style={({ pressed }) => [
-                        styles.loginBtn,
-                        { opacity: pressed || isLoading || phone.length < 5 ? 0.65 : 1 },
-                      ]}
+                      style={[styles.loginBtn, (isLoading || phone.length < 5) && { opacity: 0.65 }]}
                       onPress={handlePhoneLogin}
                       disabled={isLoading || phone.length < 5}
+                      android_ripple={{ color: Colors.light.rippleOnPrimary }}
                     >
                       {isLoading ? (
                         <ActivityIndicator color="#FFF" size="small" />
@@ -270,8 +260,9 @@ export function LoginModal({ visible, onClose }: Props) {
                 )}
 
                 <Pressable
-                  style={({ pressed }) => [styles.guestBtn, { opacity: pressed ? 0.6 : 1 }]}
+                  style={styles.guestBtn}
                   onPress={handleClose}
+                  android_ripple={{ color: Colors.light.rippleNeutral }}
                 >
                   <Text style={styles.guestText}>Continue as Guest (20 uploads)</Text>
                 </Pressable>
@@ -337,6 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderWidth: 1.5, borderColor: "#E0E0E0",
     borderRadius: 14, paddingVertical: 14,
+    overflow: "hidden",
   },
   socialBtnDisabled: { backgroundColor: "#F5F5F5", borderColor: "#E0E0E0" },
   googleG: {
@@ -363,6 +355,7 @@ const styles = StyleSheet.create({
     borderRadius: 14, paddingVertical: 14,
     backgroundColor: Colors.light.primaryContainer,
     marginBottom: 4,
+    overflow: "hidden",
   },
   phoneToggleText: {
     fontSize: 15, fontFamily: "Inter_600SemiBold",
@@ -399,10 +392,11 @@ const styles = StyleSheet.create({
   pickerLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.light.onSurface },
   pickerCode: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
   loginBtn: {
-    backgroundColor: Colors.light.primary, borderRadius: 16,
+    backgroundColor: Colors.light.primary, borderRadius: 20,
     paddingVertical: 16, flexDirection: "row",
     alignItems: "center", justifyContent: "center",
     gap: 8, marginBottom: 6,
+    overflow: "hidden",
   },
   loginBtnText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   noGoogleHint: {

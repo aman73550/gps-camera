@@ -89,14 +89,16 @@ export function SyncPromptModal() {
               </Text>
               <View style={styles.actions}>
                 <Pressable
-                  style={({ pressed }) => [styles.btn, styles.declineBtn, pressed && styles.pressed]}
+                  style={[styles.btn, styles.declineBtn]}
                   onPress={handleDecline}
+                  android_ripple={{ color: Colors.light.rippleNeutral }}
                 >
                   <Text style={styles.declineTxt}>Keep Separate</Text>
                 </Pressable>
                 <Pressable
-                  style={({ pressed }) => [styles.btn, styles.acceptBtn, pressed && styles.pressed]}
+                  style={[styles.btn, styles.acceptBtn]}
                   onPress={handleAccept}
+                  android_ripple={{ color: Colors.light.rippleOnPrimary }}
                 >
                   <Ionicons name="cloud-upload" size={16} color="#fff" style={{ marginRight: 6 }} />
                   <Text style={styles.acceptTxt}>Merge</Text>
@@ -143,8 +145,9 @@ export function SyncPromptModal() {
                 {mergeResult.failed > 0 ? ` · ${mergeResult.failed} failed` : ""}
               </Text>
               <Pressable
-                style={({ pressed }) => [styles.btn, styles.acceptBtn, { alignSelf: "center", marginTop: 16 }, pressed && styles.pressed]}
+                style={[styles.btn, styles.acceptBtn, { alignSelf: "center", marginTop: 16 }]}
                 onPress={handleDismiss}
+                android_ripple={{ color: Colors.light.rippleOnPrimary }}
               >
                 <Text style={styles.acceptTxt}>Done</Text>
               </Pressable>
@@ -228,10 +231,11 @@ const styles = StyleSheet.create({
   btn: {
     flex: 1,
     paddingVertical: 13,
-    borderRadius: 12,
+    borderRadius: 20,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
   acceptBtn: {
     backgroundColor: Colors.light.primary,

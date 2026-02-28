@@ -63,7 +63,7 @@ export default function PhotoDetailScreen() {
         <View style={[styles.container, styles.centerContent]}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.light.textTertiary} />
           <Text style={styles.notFoundText}>Photo not found</Text>
-          <Pressable style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.8 : 1 }]} onPress={() => router.back()}>
+          <Pressable style={styles.backButton} onPress={() => router.back()} android_ripple={{ color: Colors.light.ripplePrimary }}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </Pressable>
         </View>
@@ -236,11 +236,11 @@ export default function PhotoDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
-          <Pressable style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={() => router.back()} testID="back-button">
+          <Pressable style={styles.topBtn} onPress={() => router.back()} testID="back-button" android_ripple={{ color: Colors.light.rippleNeutral, borderless: true }}>
             <Ionicons name="chevron-back" size={24} color={Colors.light.onSurface} />
           </Pressable>
           <Text style={styles.topTitle} numberOfLines={1}>{photo.serialNumber}</Text>
-          <Pressable style={({ pressed }) => [styles.topBtn, { opacity: pressed ? 0.7 : 1 }]} onPress={handleDelete} testID="delete-button">
+          <Pressable style={styles.topBtn} onPress={handleDelete} testID="delete-button" android_ripple={{ color: Colors.light.rippleError, borderless: true }}>
             <Ionicons name="trash-outline" size={22} color={Colors.light.error} />
           </Pressable>
         </View>
@@ -258,8 +258,9 @@ export default function PhotoDetailScreen() {
           {/* ── Action Buttons ─────────────────────────────── */}
           <View style={styles.actionRow}>
             <Pressable
-              style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.75 : 1 }]}
+              style={styles.actionBtn}
               onPress={handleShare}
+              android_ripple={{ color: Colors.light.ripplePrimary }}
             >
               <View style={styles.actionIconWrap}>
                 <Ionicons name="share-outline" size={22} color={Colors.light.primary} />
@@ -268,8 +269,9 @@ export default function PhotoDetailScreen() {
             </Pressable>
 
             <Pressable
-              style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.75 : 1 }]}
+              style={styles.actionBtn}
               onPress={handleSaveToGallery}
+              android_ripple={{ color: Colors.light.ripplePrimary }}
             >
               <View style={styles.actionIconWrap}>
                 <Ionicons name="download-outline" size={22} color={Colors.light.primary} />
@@ -278,12 +280,10 @@ export default function PhotoDetailScreen() {
             </Pressable>
 
             <Pressable
-              style={({ pressed }) => [
-                styles.actionBtn,
-                { opacity: (pressed || isUploading) ? 0.75 : 1 },
-              ]}
+              style={[styles.actionBtn, isUploading && { opacity: 0.75 }]}
               onPress={photo.uploadedAt ? handleRequestServerDelete : handleUpload}
               disabled={isUploading}
+              android_ripple={{ color: Colors.light.rippleOnPrimary }}
             >
               <View style={[
                 styles.actionIconWrap,
@@ -305,8 +305,9 @@ export default function PhotoDetailScreen() {
             </Pressable>
 
             <Pressable
-              style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.75 : 1 }]}
+              style={styles.actionBtn}
               onPress={handleDelete}
+              android_ripple={{ color: Colors.light.rippleError }}
             >
               <View style={[styles.actionIconWrap, styles.deleteIconWrap]}>
                 <Ionicons name="trash-outline" size={22} color={Colors.light.error} />
@@ -328,8 +329,9 @@ export default function PhotoDetailScreen() {
 
             <View style={styles.infoSection}>
               <Pressable
-                style={({ pressed }) => [styles.infoRow, styles.tappableRow, { opacity: pressed ? 0.65 : 1 }]}
+                style={[styles.infoRow, styles.tappableRow]}
                 onPress={handleOpenLocation}
+                android_ripple={{ color: Colors.light.rippleNeutral }}
               >
                 <View style={styles.infoIconWrap}>
                   <Ionicons name="location" size={18} color={Colors.light.primary} />
@@ -342,8 +344,9 @@ export default function PhotoDetailScreen() {
               </Pressable>
 
               <Pressable
-                style={({ pressed }) => [styles.infoRow, styles.tappableRow, { opacity: pressed ? 0.65 : 1 }]}
+                style={[styles.infoRow, styles.tappableRow]}
                 onPress={handleOpenCoordinates}
+                android_ripple={{ color: Colors.light.rippleNeutral }}
               >
                 <View style={styles.infoIconWrap}>
                   <Ionicons name="navigate" size={18} color={Colors.light.primary} />
@@ -365,8 +368,9 @@ export default function PhotoDetailScreen() {
 
               {photo.plusCode ? (
                 <Pressable
-                  style={({ pressed }) => [styles.infoRow, styles.tappableRow, { opacity: pressed ? 0.65 : 1 }]}
+                  style={[styles.infoRow, styles.tappableRow]}
                   onPress={handleOpenPlusCode}
+                  android_ripple={{ color: Colors.light.rippleNeutral }}
                 >
                   <View style={styles.infoIconWrap}>
                     <MaterialCommunityIcons name="map-marker-outline" size={18} color={Colors.light.primary} />
@@ -434,7 +438,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   centerContent: { justifyContent: "center", alignItems: "center", gap: 12 },
   notFoundText: { fontSize: 16, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary },
-  backButton: { backgroundColor: Colors.light.primary, borderRadius: 28, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 },
+  backButton: { backgroundColor: Colors.light.primary, borderRadius: 28, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8, overflow: "hidden" },
   backButtonText: { color: "#FFF", fontSize: 14, fontFamily: "Inter_600SemiBold" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingBottom: 8, backgroundColor: Colors.light.surface },
   topBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
@@ -483,6 +487,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     marginHorizontal: -10,
+    overflow: "hidden",
   },
   tappableText: { color: Colors.light.primary },
   coordGrid: {

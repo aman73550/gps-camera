@@ -412,23 +412,18 @@ export default function CameraTab() {
           {!cameraPermission.granted &&
             (cameraDeniedPermanently && Platform.OS !== "web" ? (
               <Pressable
-                style={({ pressed }) => [
-                  styles.permissionButton,
-                  styles.settingsButton,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={[styles.permissionButton, styles.settingsButton]}
                 onPress={openSettings}
+                android_ripple={{ color: Colors.light.rippleOnPrimary }}
               >
                 <Ionicons name="settings-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Open Settings for Camera</Text>
               </Pressable>
             ) : (
               <Pressable
-                style={({ pressed }) => [
-                  styles.permissionButton,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={[styles.permissionButton]}
                 onPress={requestCameraPermission}
+                android_ripple={{ color: Colors.light.rippleOnPrimary }}
               >
                 <Ionicons name="camera-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Allow Camera</Text>
@@ -438,24 +433,18 @@ export default function CameraTab() {
           {!locationPermission.granted &&
             (locationDeniedPermanently && Platform.OS !== "web" ? (
               <Pressable
-                style={({ pressed }) => [
-                  styles.permissionButton,
-                  styles.settingsButton,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={[styles.permissionButton, styles.settingsButton]}
                 onPress={openSettings}
+                android_ripple={{ color: Colors.light.rippleOnPrimary }}
               >
                 <Ionicons name="settings-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Open Settings for Location</Text>
               </Pressable>
             ) : (
               <Pressable
-                style={({ pressed }) => [
-                  styles.permissionButton,
-                  styles.locationButton,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={[styles.permissionButton, styles.locationButton]}
                 onPress={requestLocationPermission}
+                android_ripple={{ color: Colors.light.rippleOnPrimary }}
               >
                 <Ionicons name="location-outline" size={20} color="#FFF" />
                 <Text style={styles.permissionButtonText}>Allow Location</Text>
@@ -480,9 +469,10 @@ export default function CameraTab() {
         <View style={[styles.topBar, { paddingTop: topInset }]}>
             {facing === "back" ? (
               <Pressable
-                style={({ pressed }) => [styles.flashBtn, { opacity: pressed ? 0.7 : 1 }]}
+                style={styles.flashBtn}
                 onPress={cycleFlash}
                 testID="flash-button"
+                android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: true }}
               >
                 <Ionicons
                   name={
@@ -510,7 +500,7 @@ export default function CameraTab() {
               </View>
               {/* Login / Profile button */}
               <Pressable
-                style={({ pressed }) => [styles.authOverlayBtn, { opacity: pressed ? 0.75 : 1 }]}
+                style={styles.authOverlayBtn}
                 onPress={() => {
                   if (isLoggedIn) {
                     Alert.alert(
@@ -525,6 +515,7 @@ export default function CameraTab() {
                     setShowLoginModal(true);
                   }
                 }}
+                android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: true }}
               >
                 {isLoggedIn ? (
                   <>
@@ -629,7 +620,7 @@ export default function CameraTab() {
           <View style={styles.controlsRow}>
             {/* Gallery / last captured thumbnail */}
             <Pressable
-              style={({ pressed }) => [styles.galleryPreview, { opacity: pressed ? 0.75 : 1 }]}
+              style={styles.galleryPreview}
               onPress={() => {
                 if (lastCapturedUri) {
                   const match = photos.find((p) => p.uri === lastCapturedUri);
@@ -637,6 +628,7 @@ export default function CameraTab() {
                 }
                 router.navigate("/(tabs)/files");
               }}
+              android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: false }}
             >
               {lastCapturedUri ? (
                 <Image source={{ uri: lastCapturedUri }} style={styles.galleryThumb} contentFit="cover" />
@@ -649,14 +641,11 @@ export default function CameraTab() {
 
             {/* Capture button */}
             <Pressable
-              style={({ pressed }) => [
-                styles.captureButton,
-                isCapturing && styles.captureButtonDisabled,
-                { transform: [{ scale: pressed ? 0.93 : 1 }] },
-              ]}
+              style={[styles.captureButton, isCapturing && styles.captureButtonDisabled]}
               onPress={capturePhoto}
               disabled={isCapturing}
               testID="capture-button"
+              android_ripple={{ color: "rgba(0,0,0,0.15)", borderless: false }}
             >
               {isCapturing ? (
                 <ActivityIndicator size="small" color="#000" />
@@ -667,8 +656,9 @@ export default function CameraTab() {
 
             {/* Flip camera */}
             <Pressable
-              style={({ pressed }) => [styles.iconButton, { opacity: pressed ? 0.7 : 1 }]}
+              style={styles.iconButton}
               onPress={toggleCamera}
+              android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: true }}
             >
               <Ionicons name="camera-reverse-outline" size={26} color="#FFF" />
             </Pressable>
@@ -743,6 +733,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     width: "100%",
     marginBottom: 12,
+    overflow: "hidden",
   },
   locationButton: {
     backgroundColor: "#188038",
@@ -931,6 +922,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 4,
     borderColor: "rgba(255,255,255,0.35)",
+    overflow: "hidden",
   },
   captureButtonDisabled: {
     opacity: 0.6,

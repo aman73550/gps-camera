@@ -56,14 +56,16 @@ function TrashItem({
       </View>
       <View style={trashStyles.itemActions}>
         <Pressable
-          style={({ pressed }) => [trashStyles.restoreBtn, { opacity: pressed ? 0.7 : 1 }]}
+          style={trashStyles.restoreBtn}
           onPress={() => onRestore(item)}
+          android_ripple={{ color: Colors.light.ripplePrimary, borderless: true }}
         >
           <Ionicons name="arrow-undo-outline" size={16} color={Colors.light.primary} />
         </Pressable>
         <Pressable
-          style={({ pressed }) => [trashStyles.deleteBtn, { opacity: pressed ? 0.7 : 1 }]}
+          style={trashStyles.deleteBtn}
           onPress={() => onDelete(item)}
+          android_ripple={{ color: Colors.light.rippleError, borderless: true }}
         >
           <Ionicons name="trash" size={16} color="#D32F2F" />
         </Pressable>
@@ -135,8 +137,9 @@ export default function TrashScreen() {
             Photos are permanently deleted after {TRASH_DAYS} days
           </Text>
           <Pressable
-            style={({ pressed }) => [trashStyles.emptyBtn, { opacity: pressed ? 0.7 : 1 }]}
+            style={trashStyles.emptyBtn}
             onPress={handleEmptyTrash}
+            android_ripple={{ color: Colors.light.rippleError }}
           >
             <Text style={trashStyles.emptyBtnText}>Empty</Text>
           </Pressable>
