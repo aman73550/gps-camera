@@ -20,7 +20,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { PhotoProvider } from "@/contexts/PhotoContext";
@@ -125,6 +125,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
   });
   const [bootState, setBootState] = useState<BootState>("checking");
 
