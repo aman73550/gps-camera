@@ -28,7 +28,6 @@ import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
 import { FadeInView } from "@/components/FadeInView";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { captureRef } from "react-native-view-shot";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
 import { showSignOutAlert } from "@/lib/signOutAlert";
 import {
@@ -290,7 +289,8 @@ export default function CameraTab() {
       let compositeUri: string = photo.uri;
       if (compositeRef.current && Platform.OS !== "web") {
         try {
-          compositeUri = await captureRef(compositeRef, {
+          const viewShot = await import("react-native-view-shot");
+          compositeUri = await viewShot.captureRef(compositeRef.current, {
             format: "jpg",
             quality: 0.95,
             result: "tmpfile",
