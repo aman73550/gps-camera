@@ -400,32 +400,23 @@ export async function checkSupabaseConnection(): Promise<boolean> {
   }
   console.log("✓ Supabase connected");
 
-  // Check and auto-create storage bucket
+  // Check storage bucket by listing objects (works with anon key on public bucket)
   if (activeStorageClient) {
-    const { error: getErr } = await activeStorageClient.storage.getBucket(STORAGE_BUCKET);
-    if (!getErr) {
+    const { error: listErr } = await activeStorageClient.storage
+      .from(STORAGE_BUCKET)
+      .list("", { limit: 1 });
+    const bucketMissing = listErr && (
+      listErr.message.toLowerCase().includes("not found") ||
+      listErr.message.toLowerCase().includes("does not exist") ||
+      listErr.message.toLowerCase().includes("no such")
+    );
+    if (!listErr || !bucketMissing) {
       console.log(`✓ Supabase storage bucket "${STORAGE_BUCKET}" ready`);
     } else {
-      console.log(`Storage bucket "${STORAGE_BUCKET}" not found — attempting auto-create...`);
-      const { error: createErr } = await activeStorageClient.storage.createBucket(STORAGE_BUCKET, {
-        public: true,
-        fileSizeLimit: 20971520,
-        allowedMimeTypes: ["image/jpeg", "image/jpg", "image/webp"],
-      });
-      if (createErr) {
-        console.warn(
-          `⚠️  Could not auto-create storage bucket: ${createErr.message}\n` +
-          `   Please run supabase/setup.sql in your Supabase SQL Editor to create it manually.`
-        );
-      } else {
-        console.log(`✓ Storage bucket "${STORAGE_BUCKET}" created automatically`);
-        // Apply public read policy
-        try {
-          await activeStorageClient.rpc("exec_sql" as never, {
-            query: `CREATE POLICY IF NOT EXISTS "uploads_public_read" ON storage.objects FOR SELECT USING (bucket_id = '${STORAGE_BUCKET}');`
-          });
-        } catch { /* RPC not available — bucket is public by flag */ }
-      }
+      console.warn(
+        `\n⚠️  Supabase storage bucket "${STORAGE_BUCKET}" not accessible: ${listErr.message}\n` +
+        `   Go to Supabase → Storage → New Bucket → name: "uploads" → Public ON\n`
+      );
     }
   }
 
