@@ -400,21 +400,31 @@ export async function checkSupabaseConnection(): Promise<boolean> {
   }
   console.log("✓ Supabase connected");
 
-  // Check storage bucket
+  // Check and auto-create storage bucket
   if (activeStorageClient) {
-    const { data: buckets, error: bucketsErr } = await activeStorageClient.storage.listBuckets();
-    if (bucketsErr) {
-      console.warn("⚠️  Storage bucket check failed:", bucketsErr.message);
+    const { error: getErr } = await activeStorageClient.storage.getBucket(STORAGE_BUCKET);
+    if (!getErr) {
+      console.log(`✓ Supabase storage bucket "${STORAGE_BUCKET}" ready`);
     } else {
-      const hasBucket = (buckets || []).some((b) => b.name === STORAGE_BUCKET);
-      if (hasBucket) {
-        console.log(`✓ Supabase storage bucket "${STORAGE_BUCKET}" found`);
-      } else {
-        console.error(
-          `\n⚠️  Supabase storage bucket "${STORAGE_BUCKET}" NOT FOUND!\n` +
-          `   Images will NOT be stored in Supabase. Run supabase/setup.sql to create the bucket.\n` +
-          `   Available buckets: ${(buckets || []).map((b) => b.name).join(", ") || "none"}\n`
+      console.log(`Storage bucket "${STORAGE_BUCKET}" not found — attempting auto-create...`);
+      const { error: createErr } = await activeStorageClient.storage.createBucket(STORAGE_BUCKET, {
+        public: true,
+        fileSizeLimit: 20971520,
+        allowedMimeTypes: ["image/jpeg", "image/jpg", "image/webp"],
+      });
+      if (createErr) {
+        console.warn(
+          `⚠️  Could not auto-create storage bucket: ${createErr.message}\n` +
+          `   Please run supabase/setup.sql in your Supabase SQL Editor to create it manually.`
         );
+      } else {
+        console.log(`✓ Storage bucket "${STORAGE_BUCKET}" created automatically`);
+        // Apply public read policy
+        try {
+          await activeStorageClient.rpc("exec_sql" as never, {
+            query: `CREATE POLICY IF NOT EXISTS "uploads_public_read" ON storage.objects FOR SELECT USING (bucket_id = '${STORAGE_BUCKET}');`
+          });
+        } catch { /* RPC not available — bucket is public by flag */ }
       }
     }
   }
