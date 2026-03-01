@@ -8,7 +8,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "verifiedgpscamera.vercel.app",
-        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "389461645386-72iombch0mdi6h7018k7jukg6cdc14c6.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "389461645386-engn0etdv4bdfvd52ioki1b989at3uva.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "389461645386-omhehbqt421qmkv85cio8l4qaiede4mn.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -18,7 +19,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "verifiedgpscamera.vercel.app",
-        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "389461645386-72iombch0mdi6h7018k7jukg6cdc14c6.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "389461645386-engn0etdv4bdfvd52ioki1b989at3uva.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "389461645386-omhehbqt421qmkv85cio8l4qaiede4mn.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -27,7 +29,8 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "verifiedgpscamera.vercel.app",
-        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "389461645386-72iombch0mdi6h7018k7jukg6cdc14c6.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "389461645386-engn0etdv4bdfvd52ioki1b989at3uva.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "389461645386-omhehbqt421qmkv85cio8l4qaiede4mn.apps.googleusercontent.com"
       }
     }
   },

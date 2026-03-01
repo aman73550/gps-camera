@@ -85,7 +85,8 @@
         {
           "locationWhenInUsePermission": "Verified GPS Camera needs location access to tag photos with GPS coordinates."
         }
-      ]
+      ],
+      "react-native-keyboard-controller"
     ],
     "experiments": {
       "typedRoutes": true,
