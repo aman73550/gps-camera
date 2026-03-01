@@ -16,7 +16,6 @@ import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/contexts/AuthContext";
-import { LoginModal } from "@/components/LoginModal";
 import { showSignOutAlert } from "@/lib/signOutAlert";
 
 const APP_VERSION = "1.0.0";
@@ -129,7 +128,6 @@ export default function SettingsTab() {
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
   const { isLoggedIn, user, logout } = useAuth();
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
@@ -156,8 +154,6 @@ export default function SettingsTab() {
           { text: "OK", style: "cancel" },
         ],
       );
-    } else {
-      setShowLoginModal(true);
     }
   };
 
@@ -242,8 +238,6 @@ export default function SettingsTab() {
           />
         </View>
       </ScrollView>
-
-      <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* Terms of Service Modal */}
       <Modal visible={showTerms} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTerms(false)}>

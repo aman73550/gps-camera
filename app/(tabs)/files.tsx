@@ -34,7 +34,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PhotoRecord } from "@/lib/photo-storage";
 import { uploadPhotoBatch, GUEST_LIMIT_ERROR, DAILY_LIMIT_ERROR, MONTHLY_LIMIT_ERROR, NETWORK_ERROR, FILE_TOO_LARGE_ERROR, FORMAT_NOT_ALLOWED_ERROR, ACCOUNT_BANNED_ERROR } from "@/lib/upload";
 import { FadeInView } from "@/components/FadeInView";
-import { LoginModal } from "@/components/LoginModal";
 import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
 
 const M3_EASING = Easing.bezier(0.4, 0, 0.2, 1);
@@ -130,7 +129,6 @@ export default function FilesTab() {
   const [batchStatus, setBatchStatus] = useState("");
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitType, setLimitType] = useState<LimitType>("guest");
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [visibleCount, setVisibleCount] = useState(20);
   const hasScanned = useRef(false);
@@ -558,10 +556,6 @@ export default function FilesTab() {
       )}
 
       {/* Modals */}
-      <LoginModal
-        visible={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
       <GuestLimitModal
         visible={showLimitModal}
         type={limitType}
@@ -569,10 +563,7 @@ export default function FilesTab() {
         max={maxGuestUploads}
         dailyLimit={tierLimits.standardDailyLimit}
         monthlyLimit={tierLimits.standardMonthlyLimit}
-        onLogin={() => {
-          setShowLimitModal(false);
-          setShowLoginModal(true);
-        }}
+        onLogin={() => setShowLimitModal(false)}
         onDismiss={() => setShowLimitModal(false)}
       />
 

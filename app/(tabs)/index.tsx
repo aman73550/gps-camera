@@ -23,7 +23,6 @@ import Colors from "@/constants/colors";
 import { usePhotos } from "@/contexts/PhotoContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PhotoOverlay } from "@/components/PhotoOverlay";
-import { LoginModal } from "@/components/LoginModal";
 import { GuestLimitModal, LimitType } from "@/components/GuestLimitModal";
 import { FadeInView } from "@/components/FadeInView";
 import { Image } from "expo-image";
@@ -110,7 +109,6 @@ export default function CameraTab() {
 
   const { addPhoto, photos, uploadCount, maxGuestUploads, tierLimits } = usePhotos();
   const { isLoggedIn, user, logout } = useAuth();
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitType, setLimitType] = useState<LimitType>("guest");
   const photoCount = photos.length;
@@ -516,8 +514,6 @@ export default function CameraTab() {
                         { text: "OK", style: "cancel" },
                       ],
                     );
-                  } else {
-                    setShowLoginModal(true);
                   }
                 }}
                 android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: true }}
@@ -582,7 +578,6 @@ export default function CameraTab() {
 
         </View>
 
-        <LoginModal visible={showLoginModal} onClose={() => setShowLoginModal(false)} />
         <GuestLimitModal
           visible={showLimitModal}
           type={limitType}
@@ -590,10 +585,7 @@ export default function CameraTab() {
           max={maxGuestUploads}
           dailyLimit={tierLimits.standardDailyLimit}
           monthlyLimit={tierLimits.standardMonthlyLimit}
-          onLogin={() => {
-            setShowLimitModal(false);
-            setShowLoginModal(true);
-          }}
+          onLogin={() => setShowLimitModal(false)}
           onDismiss={() => setShowLimitModal(false)}
         />
 
