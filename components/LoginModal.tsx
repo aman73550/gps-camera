@@ -8,6 +8,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
@@ -61,13 +62,19 @@ export function LoginModal({ visible, onClose }: Props) {
   const reversedClientId = `com.googleusercontent.apps.${androidPrefix}`;
   const nativeRedirectUri = `${reversedClientId}:/oauth2redirect`;
 
-  const redirectUri = makeRedirectUri({ native: nativeRedirectUri });
+  let redirectUri = "";
+  try {
+    redirectUri = makeRedirectUri({ native: nativeRedirectUri });
+  } catch {
+    redirectUri = nativeRedirectUri;
+  }
 
-  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    webClientId,
-    androidClientId,
-    redirectUri,
-  });
+  // On web, pass null to disable Google auth (Android-only app, web is preview only)
+  const googleAuthConfig = Platform.OS !== "web"
+    ? { webClientId, androidClientId, redirectUri }
+    : null;
+
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest(googleAuthConfig);
 
   useEffect(() => {
     if (googleResponse?.type === "success") {
