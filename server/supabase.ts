@@ -399,5 +399,25 @@ export async function checkSupabaseConnection(): Promise<boolean> {
     return false;
   }
   console.log("✓ Supabase connected");
+
+  // Check storage bucket
+  if (activeStorageClient) {
+    const { data: buckets, error: bucketsErr } = await activeStorageClient.storage.listBuckets();
+    if (bucketsErr) {
+      console.warn("⚠️  Storage bucket check failed:", bucketsErr.message);
+    } else {
+      const hasBucket = (buckets || []).some((b) => b.name === STORAGE_BUCKET);
+      if (hasBucket) {
+        console.log(`✓ Supabase storage bucket "${STORAGE_BUCKET}" found`);
+      } else {
+        console.error(
+          `\n⚠️  Supabase storage bucket "${STORAGE_BUCKET}" NOT FOUND!\n` +
+          `   Images will NOT be stored in Supabase. Run supabase/setup.sql to create the bucket.\n` +
+          `   Available buckets: ${(buckets || []).map((b) => b.name).join(", ") || "none"}\n`
+        );
+      }
+    }
+  }
+
   return true;
 }

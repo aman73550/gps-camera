@@ -411,7 +411,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const safeName = req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
 
-      await uploadToStorage(req.file.buffer, safeName, req.file.mimetype);
+      const storageOk = await uploadToStorage(req.file.buffer, safeName, req.file.mimetype);
+      if (!storageOk) {
+        console.warn(`⚠️  Storage upload FAILED for ${safeName} — image will only be on local disk. Check Supabase storage bucket "uploads" exists and is public.`);
+      } else {
+        console.log(`✓ Storage upload OK: ${safeName}`);
+      }
 
       if (!process.env.VERCEL) {
         try {
