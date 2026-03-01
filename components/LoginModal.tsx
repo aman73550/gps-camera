@@ -53,21 +53,19 @@ export function LoginModal({ visible, onClose }: Props) {
   const [showPhoneSection, setShowPhoneSection] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? webClientId;
 
-  // Derive the reversed-client-ID scheme that Google uses for Android OAuth callbacks.
-  // e.g. "389461645...apps.googleusercontent.com" → "com.googleusercontent.apps.389461645..."
-  const clientIdPrefix = (googleClientId ?? "").replace(".apps.googleusercontent.com", "");
-  const reversedClientId = `com.googleusercontent.apps.${clientIdPrefix}`;
+  // Reversed-client-ID scheme for Android OAuth callbacks.
+  const androidPrefix = (androidClientId ?? "").replace(".apps.googleusercontent.com", "");
+  const reversedClientId = `com.googleusercontent.apps.${androidPrefix}`;
   const nativeRedirectUri = `${reversedClientId}:/oauth2redirect`;
 
-  // makeRedirectUri WITHOUT useProxy — the deprecated auth.expo.io proxy is shut down.
-  // On Android EAS builds this returns the native scheme URI automatically.
   const redirectUri = makeRedirectUri({ native: nativeRedirectUri });
 
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    webClientId: googleClientId,
-    androidClientId: googleClientId,
+    webClientId,
+    androidClientId,
     redirectUri,
   });
 

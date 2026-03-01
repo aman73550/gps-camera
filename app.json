@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": ["gpscamera", "com.googleusercontent.apps.389461645386-72iombch0mdi6h7018k7jukg6cdc14c6"],
+    "scheme": ["gpscamera", "com.googleusercontent.apps.389461645386-omhehbqt421qmkv85cio8l4qaiede4mn"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
