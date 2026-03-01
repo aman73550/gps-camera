@@ -178,9 +178,9 @@ export function LoginModal({ visible, onClose }: Props) {
                 <View style={styles.socialSection}>
                   {/* Google */}
                   <Pressable
-                    style={[styles.socialBtn, !googleClientId && styles.socialBtnDisabled]}
+                    style={[styles.socialBtn, !webClientId && styles.socialBtnDisabled]}
                     onPress={() => promptGoogleAsync()}
-                    disabled={isLoading || !googleClientId}
+                    disabled={isLoading || !webClientId}
                     android_ripple={{ color: Colors.light.rippleNeutral }}
                   >
                     {isLoading ? (
@@ -276,7 +276,7 @@ export function LoginModal({ visible, onClose }: Props) {
                   </>
                 )}
 
-                {!googleClientId && (
+                {!webClientId && (
                   <Text style={styles.noGoogleHint}>
                     Google sign-in requires EXPO_PUBLIC_GOOGLE_CLIENT_ID to be configured.
                   </Text>
