@@ -124,9 +124,10 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function verifyPage({ upload, error, imageUrl }: { upload?: Record<string, unknown>; error?: string; host?: string; imageUrl?: string | null }): string {
+function verifyPage({ upload, error, imageUrl, fallbackImageUrl }: { upload?: Record<string, unknown>; error?: string; host?: string; imageUrl?: string | null; fallbackImageUrl?: string | null }): string {
   const title = upload ? `Verified Photo · ${upload["serial_number"]}` : "Verified GPS Camera";
   const imgSrc = imageUrl || null;
+  const fallbackSrc = fallbackImageUrl || null;
   const date = upload?.["created_at"] ? new Date(upload["created_at"] as string).toLocaleString("en-IN", {
     weekday: "short", year: "numeric", month: "long", day: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
@@ -203,9 +204,9 @@ ${error ? `
   ${imgSrc && !(upload?.["flagged"] as boolean) ? `
   <div class="photo-wrap">
     <img id="vphoto" src="${imgSrc}" alt="Verified Photo" loading="eager"
-      onerror="this.onerror=null;document.getElementById('img-err').style.display='block';this.style.display='none'" />
+      onerror="var fb='${fallbackSrc||''}';if(fb&&this.src!==fb){this.onerror=function(){this.onerror=null;document.getElementById('img-err').style.display='block';this.style.display='none'};this.src=fb;}else{this.onerror=null;document.getElementById('img-err').style.display='block';this.style.display='none'}" />
     <div id="img-err" style="display:none;padding:24px;text-align:center;color:#888;font-size:13px">
-      ⚠️ Image failed to load. <a href="${imgSrc}" style="color:#60a5fa" target="_blank">Open directly</a>
+      ⚠️ Image failed to load. <a href="${fallbackSrc||imgSrc}" style="color:#60a5fa" target="_blank">Open directly</a>
     </div>
     <div class="verified-strip">
       <div class="shield">🛡️</div>
@@ -275,8 +276,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .single();
     if (!data) return res.status(404).send(verifyPage({ error: "No record found for this serial number." }));
     const filename = data.file_path ? path.basename(data.file_path as string) : null;
-    const imageUrl = filename ? getStoragePublicUrl(filename) : null;
-    return res.send(verifyPage({ upload: data, imageUrl }));
+    const imageUrl = data.file_path ? `/api/public/image/${serial}` : null;
+    const fallbackImageUrl = filename ? getStoragePublicUrl(filename) : null;
+    return res.send(verifyPage({ upload: data, imageUrl, fallbackImageUrl }));
   });
 
   app.post("/api/admin/login", (req: Request, res: Response) => {
