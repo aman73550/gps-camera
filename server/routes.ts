@@ -427,31 +427,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const skipRecord = req.headers["x-skip-record"] === "true";
-
-      if (!skipRecord) {
-        await recordUpload({
-          user_phone: userPhone,
-          serial_number: serialNumber || "",
-          latitude: parseFloat(latitude) || 0,
-          longitude: parseFloat(longitude) || 0,
-          altitude: parseFloat(altitude) || 0,
-          address: address || "",
-          location_name: locationName || "",
-          plus_code: plusCode || "",
-          file_path: safeName,
-          file_size_kb: Math.round(req.file.size / 1024),
-          is_guest: isGuest,
-          image_hash: imageHash || null,
-        });
-      }
+      await recordUpload({
+        user_phone: userPhone,
+        serial_number: serialNumber || "",
+        latitude: parseFloat(latitude) || 0,
+        longitude: parseFloat(longitude) || 0,
+        altitude: parseFloat(altitude) || 0,
+        address: address || "",
+        location_name: locationName || "",
+        plus_code: plusCode || "",
+        file_path: safeName,
+        file_size_kb: Math.round(req.file.size / 1024),
+        is_guest: isGuest,
+        image_hash: imageHash || null,
+      });
 
       if (userPhone) {
         await upsertProfile(userPhone);
       }
 
       console.log(
-        `Upload: ${serialNumber} (${req.file.size}B) user=${userPhone || "guest"} skipRecord=${skipRecord}`,
+        `Upload OK: ${serialNumber} → ${safeName} (${req.file.size}B) user=${userPhone || "guest"} storage=${storageOk ? "OK" : "FAIL"}`,
       );
 
       return res.status(200).json({
