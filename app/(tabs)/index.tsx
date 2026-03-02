@@ -28,7 +28,6 @@ import { FadeInView } from "@/components/FadeInView";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { getCachedLocation, setCachedLocation } from "@/lib/location-cache";
-import { showSignOutAlert } from "@/lib/signOutAlert";
 import {
   generateSerialNumber,
   generateId,
@@ -108,7 +107,7 @@ export default function CameraTab() {
   const [showNoteInput, setShowNoteInput] = useState(false);
 
   const { addPhoto, photos, uploadCount, maxGuestUploads, tierLimits } = usePhotos();
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitType, setLimitType] = useState<LimitType>("guest");
   const photoCount = photos.length;
@@ -501,20 +500,7 @@ export default function CameraTab() {
               <Pressable
                 style={styles.authOverlayBtn}
                 onPress={() => {
-                  if (isLoggedIn) {
-                    Alert.alert(
-                      `Signed in: ${user?.phone}`,
-                      user?.tier === "pro" ? "Pro — unlimited uploads." : "Standard account.",
-                      [
-                        {
-                          text: "Sign Out",
-                          style: "destructive",
-                          onPress: () => showSignOutAlert(logout, () => router.navigate("/(tabs)/files")),
-                        },
-                        { text: "OK", style: "cancel" },
-                      ],
-                    );
-                  }
+                  Alert.alert("Pro Account", "Unlimited uploads enabled.", [{ text: "OK" }]);
                 }}
                 android_ripple={{ color: "rgba(255,255,255,0.25)", borderless: true }}
               >

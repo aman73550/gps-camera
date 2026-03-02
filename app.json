@@ -5,9 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": ["gpscamera", "com.googleusercontent.apps.389461645386-omhehbqt421qmkv85cio8l4qaiede4mn"],
+    "scheme": "gpscamera",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -38,19 +38,7 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "ACCESS_MEDIA_LOCATION",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.ACCESS_MEDIA_LOCATION"
+        "ACCESS_MEDIA_LOCATION"
       ]
     },
     "web": {
@@ -84,6 +72,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Verified GPS Camera needs location access to tag photos with GPS coordinates."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Verified GPS Camera to access your photos."
         }
       ]
     ],

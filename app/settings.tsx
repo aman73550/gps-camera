@@ -16,7 +16,6 @@ import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/contexts/AuthContext";
-import { showSignOutAlert } from "@/lib/signOutAlert";
 
 const APP_VERSION = "1.0.0";
 
@@ -127,7 +126,7 @@ function SectionHeader({ title }: { title: string }) {
 export default function SettingsTab() {
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
@@ -141,20 +140,7 @@ export default function SettingsTab() {
   };
 
   const handleAccountPress = () => {
-    if (isLoggedIn) {
-      Alert.alert(
-        `Signed in as ${user?.phone}`,
-        user?.tier === "pro" ? "Pro account — unlimited uploads." : "Standard account.",
-        [
-          {
-            text: "Sign Out",
-            style: "destructive",
-            onPress: () => showSignOutAlert(logout, () => router.navigate("/(tabs)/files")),
-          },
-          { text: "OK", style: "cancel" },
-        ],
-      );
-    }
+    Alert.alert("Pro Account", "Unlimited uploads enabled.", [{ text: "OK" }]);
   };
 
   return (

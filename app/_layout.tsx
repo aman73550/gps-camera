@@ -25,7 +25,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { PhotoProvider } from "@/contexts/PhotoContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SyncPromptModal } from "@/components/SyncPromptModal";
 import { checkRequiredVersion } from "@/lib/supabase";
 import { cleanExpiredTrash } from "@/lib/photo-storage";
 import Colors from "@/constants/colors";
@@ -165,9 +164,8 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <PhotoProvider>
-            <GestureHandlerRootView>
+            <GestureHandlerRootView style={{ flex: 1 }}>
               <RootLayoutNav />
-              <SyncPromptModal />
             </GestureHandlerRootView>
           </PhotoProvider>
         </AuthProvider>

@@ -199,7 +199,7 @@ ${error ? `
     <div class="error-msg">${error}<br><br>Make sure you scanned the QR code correctly from a Verified GPS Camera photo.</div>
   </div>
 ` : `
-  ${(upload?.["flagged"] as boolean) ? `<div class="flagged-banner">🚩 <span>This image has been flagged by a moderator${upload["flag_reason"] ? `: ${upload["flag_reason"]}` : ""}.</span></div>` : ""}
+  ${(upload?.["flagged"] as boolean) ? `<div class="flagged-banner">🚩 <span>This image has been flagged by a moderator${upload?.["flag_reason"] ? `: ${upload?.["flag_reason"]}` : ""}.</span></div>` : ""}
   ${imgSrc && !(upload?.["flagged"] as boolean) ? `
   <div class="photo-wrap">
     <img id="vphoto" src="${imgSrc}" alt="Verified Photo" loading="eager"

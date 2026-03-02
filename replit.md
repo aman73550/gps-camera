@@ -6,93 +6,77 @@ A professional GPS camera app built with Expo React Native that captures geo-tag
 
 - **Frontend**: Expo React Native with Expo Router (file-based routing)
 - **Backend**: Express.js (port 5000) for API and landing page
+- **Database**: Supabase PostgreSQL + Storage
 - **State**: React Context + AsyncStorage for photo registry
 - **Design**: Material 3 inspired with tonal blue palette, Inter font family
+
+## Current Status
+
+- **Login System**: DISABLED (all users are "pro" tier with unlimited uploads)
+- **New Architecture**: DISABLED (`newArchEnabled: false` in app.json for stability)
+- **Google OAuth**: Removed from active codebase (LoginModal deleted)
 
 ## Features
 
 - **Camera Tab**: Live camera with real-time GPS overlay (lat/long/address)
 - **Photo Capture**: Auto-generates serial numbers (IMG-YYYYMMDD-XXX) and QR codes
 - **Image Compression**: Photos compressed to ~200-300KB via expo-image-manipulator
-- **Files Tab**: Clean 3-column grid (Google Photos style, no text overlays), multi-select on long-press with batch Upload/Share/Save/Delete actions
-- **Photo Detail**: Full info view with 4 action buttons: Share, Save to Gallery, Upload (manual-only with compression), Delete
-- **Upload Workflow**: Manual-only; triggers compression (200-300KB) + security verification before POST to Express server
-- **Security**: Photos stored in private app directory, AsyncStorage whitelist verification; unauthorized files blocked on upload
-- **Guest Mode**: 20-photo upload limit for guests
-- **Batch Operations**: Upload, Share, Save to DCIM gallery, and Delete multiple photos at once
-- **Sync Status**: Each photo shows a grey cloud (local only) or green cloud-done (uploaded) badge in the grid and detail view; status updates immediately after upload
-- **Infinite Scroll Pagination**: Files tab loads 20 photos initially and loads the next 20 as user scrolls to the bottom, with a footer showing current vs total count
-- **Supabase Integration**: PostgreSQL backend for upload tracking, user profiles, and tier-based upload limits
-- **Dynamic Tiers**: Guest (20 total), Standard (50/day, 1000/month), Pro (unlimited) — enforced server-side via Supabase
-- **Admin Panel**: Web UI at `/admin` with dashboard stats, 7-day chart, user tier management (upgrade/downgrade), paginated uploads table, and retention policy settings
-- **Auto-Delete Cleanup**: Server-side nightly cron at 2am that deletes uploads exceeding the configured retention period (3/6/12 months) when enabled in the admin panel
-- **Offline Queue**: Network monitoring via expo-network; offline banner in Files tab shows pending count; uploads that fail due to network are marked `pendingUpload: true` and shown in the tab badge
-- **Custom Text Overlay**: Optional Project Name/Note field on camera (folder icon button toggles it); note is permanently burned into pixel overlay, shown with yellow label above GPS data strip
-- **App Version Check**: On startup pings Supabase `app_settings.required_version`; if current app version is lower, shows a non-dismissible update dialog directing user to the app store
-- **Privacy Policy**: Settings tab added to navigation; contains Privacy Policy and Terms of Service links (update URLs in `app/(tabs)/settings.tsx`)
-- **Haptic + Shutter Sync**: Camera shutter and haptic feedback now fire simultaneously via `Promise.all` for a premium feel
+- **Files Tab**: Clean 3-column grid (Google Photos style), multi-select with batch actions
+- **Photo Detail**: Full info view with Share, Save to Gallery, Upload, Delete
+- **Upload Workflow**: Manual-only; triggers compression + security verification
+- **Security**: Photos stored in private app directory, AsyncStorage whitelist verification
+- **Batch Operations**: Upload, Share, Save to DCIM gallery, and Delete multiple photos
+- **Sync Status**: Grey cloud (local) or green cloud-done (uploaded) badge
+- **Infinite Scroll Pagination**: Files tab loads 20 photos, loads more on scroll
+- **Supabase Integration**: PostgreSQL + Storage for uploads and user tracking
+- **Admin Panel**: Web UI at `/admin` with dashboard, user management, uploads table
+- **Auto-Delete Cleanup**: Nightly cron for retention policy
+- **Offline Queue**: Network monitoring, offline banner, pending upload tracking
+- **Custom Text Overlay**: Optional Project Name/Note field on camera
+- **App Version Check**: Startup version gate via Supabase `app_settings`
+- **QR Verification**: Public verification page at `/v/:serial`
 
 ## File Structure
 
 ```
 app/
-  _layout.tsx              # Root layout with fonts, providers
+  _layout.tsx              # Root layout with fonts, providers, ErrorBoundary
   (tabs)/
     _layout.tsx            # Two-tab layout (Camera + Files)
     index.tsx              # Camera tab screen
     files.tsx              # Files/gallery tab screen
   photo/
     [id].tsx               # Photo detail screen
+  settings.tsx             # Settings screen
+  trash.tsx                # Recycle bin screen
 
 components/
-  QRCodeView.tsx           # QR code rendering component
+  ErrorBoundary.tsx        # Error boundary wrapper
+  ErrorFallback.tsx        # Error fallback UI with stack trace
+  FadeInView.tsx           # Reusable M3 fade animation
+  GuestLimitModal.tsx      # Upload limit notification
   PhotoOverlay.tsx         # GPS overlay for photos
-  ErrorBoundary.tsx        # Error boundary
-  ErrorFallback.tsx        # Error fallback UI
+  QRCodeView.tsx           # QR code rendering
 
 contexts/
+  AuthContext.tsx           # Auth stub (login disabled, tier: "pro")
   PhotoContext.tsx          # Photo state management
 
 lib/
-  photo-storage.ts         # AsyncStorage operations, serial generation, isWhitelisted
-  upload.ts                # Upload logic: security verify, compress, POST to server
+  location-cache.ts        # AsyncStorage cached location
+  photo-storage.ts         # AsyncStorage operations, serial generation
   query-client.ts          # React Query client
+  signOutAlert.ts          # Sign out confirmation alert
+  supabase.ts              # Supabase client + version check
+  upload.ts                # Upload logic: verify, compress, POST
 
 constants/
   colors.ts                # Material 3 tonal blue color palette
 
 server/
   index.ts                 # Express server entry
-  routes.ts                # API routes
-```
-
-## Performance & UX
-
-- **Instant Location**: Last-known GPS cached in AsyncStorage, restored instantly on every app launch — no waiting for "Fetching location..."
-- **Background Processing**: All image resize/crop/compress runs inside `InteractionManager.runAfterInteractions()` so camera shutter animations and haptics never stutter
-- **FadeThrough Transitions**: Both tabs fade in with Material 3 easing (`Easing.bezier(0.4, 0, 0.2, 1)`, 280ms) via `FadeInView` + `useFocusEffect`
-- **Container Transform**: Grid items scale to 0.94 on press-in (100ms), spring back on press-out (220ms) using reanimated v4 `useSharedValue`
-- **Photo Detail Transition**: Stack navigation uses `fade_from_bottom` at 300ms for a native container-transform feel
-
-## File Structure
-
-```
-app/
-  _layout.tsx              # Root layout; photo/[id] uses fade_from_bottom animation
-  (tabs)/
-    _layout.tsx            # Two-tab layout (Camera + Files)
-    index.tsx              # Camera tab screen; FadeInView + InteractionManager
-    files.tsx              # Files/gallery tab; FadeInView + animated grid items
-
-components/
-  FadeInView.tsx           # Reusable M3 fade component (useFocusEffect + reanimated)
-  QRCodeView.tsx           # QR code rendering component
-  PhotoOverlay.tsx         # GPS overlay for photos
-  ErrorBoundary.tsx        # Error boundary
-  ErrorFallback.tsx        # Error fallback UI
-
-lib/
-  location-cache.ts        # AsyncStorage cached location (instant Fast-Fix display)
+  routes.ts                # API routes + admin panel + verification pages
+  supabase.ts              # Server-side Supabase storage helpers
 ```
 
 ## Key Dependencies
@@ -103,7 +87,7 @@ lib/
 - expo-file-system: Private file storage
 - expo-crypto: UUID generation
 - react-native-qrcode-svg: QR code generation
-- react-native-view-shot: View capture for overlays
+- react-native-view-shot: View capture for overlays (lazy-loaded)
 - @expo-google-fonts/inter: Typography
 
 ## Running
@@ -111,31 +95,27 @@ lib/
 - Frontend: `npm run expo:dev` (port 8081)
 - Backend: `npm run server:dev` (port 5000)
 
-## Vercel Deployment
+## Deployment
 
-The backend is ready to deploy to Vercel free tier. Key files:
+### Vercel
+- `vercel.json` — routes to `api/index.ts` serverless function
+- `api/index.ts` — Vercel entry point
+- Domain: verifiedgpscamera.vercel.app
 
-- `vercel.json` — routes all requests to `api/index.ts` serverless function
-- `api/index.ts` — Vercel entry point (re-exports `handler` from `server/index.ts`)
-- `server/index.ts` — exports `handler` for Vercel; starts HTTP server only on non-Vercel
-- `server/supabase.ts` — storage helpers: `uploadToStorage`, `getStoragePublicUrl`, `getStorageThumbUrl`, `deleteFromStorage`
-- `supabase/setup.sql` — includes storage bucket creation + RLS policies (run in Supabase SQL Editor)
+### EAS Build (Android APK)
+- `eas.json` — build profiles (development/preview/production)
+- Build: `eas build --platform android --profile preview`
 
-### Storage layer (Supabase Storage)
-
-- Bucket name: `uploads` (public read access)
-- On Vercel: all image serving redirects to Supabase Storage URLs (no local disk)
-- On Replit dev: local disk served first, Supabase Storage as fallback
-- New uploads (after migration): buffer uploaded to Supabase Storage + local disk copy on Replit dev
-- Service role key (`SUPABASE_SERVICE_ROLE_KEY`) recommended for storage uploads; falls back to anon key
-
-### Required env vars for Vercel
-
+### Required env vars
 ```
 SUPABASE_URL
 SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY   # recommended
+SUPABASE_SERVICE_ROLE_KEY
 SESSION_SECRET
 ADMIN_USERNAME
 ADMIN_PASSWORD
 ```
+
+### Admin credentials
+- Username: `Aman73550`
+- Password: `Aman@73550`

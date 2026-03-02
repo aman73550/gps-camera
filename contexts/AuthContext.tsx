@@ -1,6 +1,4 @@
 import React, { createContext, useContext, ReactNode } from "react";
-import type { CompressionSettings } from "@/lib/upload";
-import type { MergeResult, MergeProgress } from "@/lib/merge";
 
 export interface AuthUser {
   name: string;
@@ -14,44 +12,27 @@ interface AuthContextValue {
   tier: "guest" | "standard" | "pro";
   isBanned: boolean;
   warnMessage: string | null;
-  loginModalVisible: boolean;
-  openLoginModal: () => void;
-  closeLoginModal: () => void;
   login: (phone: string, displayName?: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
-  syncPromptVisible: boolean;
-  syncPhotoCount: number;
-  acceptSync: (compression?: CompressionSettings, onProgress?: (p: MergeProgress) => void) => Promise<MergeResult>;
-  declineSync: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const noopAsync = async () => {};
-const noopMerge = async (): Promise<MergeResult> => ({
-  total: 0, claimed: 0, uploaded: 0, linked: 0, failed: 0,
-});
+const PRO_USER: AuthUser = { name: "User", phone: "local", tier: "pro" };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        isLoggedIn: false,
-        user: null,
+        isLoggedIn: true,
+        user: PRO_USER,
         tier: "pro",
         isBanned: false,
         warnMessage: null,
-        loginModalVisible: false,
-        openLoginModal: () => {},
-        closeLoginModal: () => {},
-        login: noopAsync,
+        login: async () => {},
         logout: () => {},
-        refreshProfile: noopAsync,
-        syncPromptVisible: false,
-        syncPhotoCount: 0,
-        acceptSync: noopMerge,
-        declineSync: () => {},
+        refreshProfile: async () => {},
       }}
     >
       {children}
