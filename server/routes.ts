@@ -251,16 +251,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const filename = path.basename(data.file_path);
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.setHeader("Access-Control-Allow-Origin", "*");
-    if (process.env.VERCEL) {
-      const storageUrl = getStoragePublicUrl(filename);
-      if (!storageUrl) return res.status(503).send("Storage not configured");
+
+    if (!process.env.VERCEL) {
+      const filePath = path.join(uploadsDir, filename);
+      if (fs.existsSync(filePath)) return res.sendFile(filePath);
+    }
+
+    const storageUrl = getStoragePublicUrl(filename);
+    if (!storageUrl) return res.status(503).send("Storage not configured");
+    try {
+      const imgResp = await fetch(storageUrl);
+      if (!imgResp.ok) return res.status(404).send("Image not found in storage");
+      const contentType = imgResp.headers.get("content-type") || "image/jpeg";
+      const buffer = Buffer.from(await imgResp.arrayBuffer());
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Length", buffer.length);
+      return res.send(buffer);
+    } catch {
       return res.redirect(302, storageUrl);
     }
-    const filePath = path.join(uploadsDir, filename);
-    if (fs.existsSync(filePath)) return res.sendFile(filePath);
-    const storageUrl = getStoragePublicUrl(filename);
-    if (storageUrl) return res.redirect(302, storageUrl);
-    return res.status(404).send("Image file not found");
   });
 
   // ── Public: verification page (scanned from QR on photo) ──
@@ -793,41 +802,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filename = path.basename(req.params["filename"] as string);
       const isThumb = req.query["thumb"] === "1";
 
-      if (process.env.VERCEL) {
-        const storageUrl = isThumb ? getStorageThumbUrl(filename) : getStoragePublicUrl(filename);
-        if (!storageUrl) return res.status(503).send("Storage not configured");
-        res.setHeader("Cache-Control", "public, max-age=3600");
-        return res.redirect(302, storageUrl);
-      }
-
-      const filePath = path.join(uploadsDir, filename);
-      if (!fs.existsSync(filePath)) {
-        const storageUrl = isThumb ? getStorageThumbUrl(filename) : getStoragePublicUrl(filename);
-        if (storageUrl) { res.setHeader("Cache-Control", "public, max-age=3600"); return res.redirect(302, storageUrl); }
-        return res.status(404).send("Not found");
-      }
-
-      if (!isThumb) return res.sendFile(filePath);
-
-      const thumbsDir = path.join(uploadsDir, "thumbs");
-      if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
-      const thumbPath = path.join(thumbsDir, filename.replace(/\.[^.]+$/, ".jpg"));
-
-      try {
-        if (!fs.existsSync(thumbPath)) {
-          const sharp = (await import("sharp")).default;
-          await sharp(filePath)
-            .resize(280, 200, { fit: "cover", position: "centre" })
-            .jpeg({ quality: 42, progressive: true })
-            .toFile(thumbPath);
+      if (!process.env.VERCEL) {
+        const filePath = path.join(uploadsDir, filename);
+        if (fs.existsSync(filePath)) {
+          if (!isThumb) return res.sendFile(filePath);
+          const thumbsDir = path.join(uploadsDir, "thumbs");
+          if (!fs.existsSync(thumbsDir)) fs.mkdirSync(thumbsDir, { recursive: true });
+          const thumbPath = path.join(thumbsDir, filename.replace(/\.[^.]+$/, ".jpg"));
+          try {
+            if (!fs.existsSync(thumbPath)) {
+              const sharp = (await import("sharp")).default;
+              await sharp(filePath)
+                .resize(280, 200, { fit: "cover", position: "centre" })
+                .jpeg({ quality: 42, progressive: true })
+                .toFile(thumbPath);
+            }
+            if (fs.existsSync(thumbPath)) {
+              res.setHeader("Cache-Control", "public, max-age=86400");
+              return res.sendFile(thumbPath);
+            }
+            return res.sendFile(filePath);
+          } catch {
+            if (!res.headersSent) return res.sendFile(filePath);
+          }
         }
-        if (!fs.existsSync(thumbPath)) return res.sendFile(filePath);
-        res.setHeader("Cache-Control", "public, max-age=86400");
-        return res.sendFile(thumbPath, (err) => {
-          if (err && !res.headersSent) res.sendFile(filePath);
-        });
+      }
+
+      const storageUrl = isThumb ? getStorageThumbUrl(filename) : getStoragePublicUrl(filename);
+      if (!storageUrl) return res.status(503).send("Storage not configured");
+      try {
+        const imgResp = await fetch(storageUrl);
+        if (!imgResp.ok) return res.status(404).send("Image not found");
+        const contentType = imgResp.headers.get("content-type") || "image/jpeg";
+        const buffer = Buffer.from(await imgResp.arrayBuffer());
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Length", buffer.length);
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return res.send(buffer);
       } catch {
-        if (!res.headersSent) return res.sendFile(filePath);
+        return res.redirect(302, storageUrl);
       }
     },
   );
