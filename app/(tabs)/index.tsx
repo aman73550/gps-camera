@@ -552,7 +552,6 @@ export default function CameraTab() {
               address={address}
               locationName={locationName}
               plusCode={plusCode || computePlusCode(latitude, longitude)}
-              nearPlace={nearPlace}
               note={note.trim() || undefined}
               serialNumber={
                 overlaySerial ??
