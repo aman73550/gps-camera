@@ -30,9 +30,9 @@ export interface CompressionSettings {
 }
 
 export const DEFAULT_COMPRESSION: CompressionSettings = {
-  maxWidth: 1000,
-  quality: 50,
-  format: "auto",
+  maxWidth: 1200,
+  quality: 70,
+  format: "jpeg",
   maxFileMb: 5,
 };
 
@@ -48,7 +48,7 @@ export function getServerBase(): string {
 function resolveImageFormat(
   setting: CompressionSettings["format"],
 ): { format: ImageManipulator.SaveFormat; mimeType: string; ext: string } {
-  if (setting === "webp" || (setting === "auto" && Platform.OS === "android")) {
+  if (setting === "webp") {
     return { format: ImageManipulator.SaveFormat.WEBP, mimeType: "image/webp", ext: "webp" };
   }
   return { format: ImageManipulator.SaveFormat.JPEG, mimeType: "image/jpeg", ext: "jpg" };
